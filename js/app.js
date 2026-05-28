@@ -5,13 +5,35 @@ const STORAGE_KEY = 'bird-diary-sightings';
 let allBirds = [];
 let sightings = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 let currentView = 'guide';
-let selectedBird = null;
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
+
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
 
 // ─── Boot ───────────────────────────────────────────────────────────────────
 
 async function init() {
-  const res = await fetch('data/birds.json');
-  allBirds = await res.json();
+  try {
+    const res = await fetch('data/birds.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    allBirds = await res.json();
+  } catch (err) {
+    showError(`Failed to load bird data: ${err.message}. Please reload the page.`);
+    return;
+  }
   renderGuide();
   bindNav();
   renderDiary();
@@ -35,17 +57,29 @@ function bindNav() {
 // ─── Field Guide ────────────────────────────────────────────────────────────
 
 function renderGuide(filter = '', family = '') {
-  const section = document.getElementById('view-guide');
   const detail = document.getElementById('bird-detail');
-  detail.classList.add('hidden');
-
   const grid = document.getElementById('bird-grid');
+  detail.classList.add('hidden');
+  grid.classList.remove('hidden');
+
   const birds = allBirds.filter(b => {
     const matchName = b.commonName.toLowerCase().includes(filter.toLowerCase()) ||
                       b.scientificName.toLowerCase().includes(filter.toLowerCase());
     const matchFamily = !family || b.family === family;
     return matchName && matchFamily;
   });
+
+  const countEl = document.getElementById('guide-count');
+  if (filter || family) {
+    countEl.textContent = `${birds.length} result${birds.length !== 1 ? 's' : ''}`;
+  } else {
+    countEl.textContent = `${birds.length} birds`;
+  }
+
+  if (birds.length === 0) {
+    grid.innerHTML = '<p class="diary-empty">No birds match your search. Try a different name or family.</p>';
+    return;
+  }
 
   grid.innerHTML = birds.map(b => `
     <div class="bird-card" data-id="${b.id}">
@@ -65,7 +99,6 @@ function renderGuide(filter = '', family = '') {
 function showBirdDetail(id) {
   const bird = allBirds.find(b => b.id === id);
   if (!bird) return;
-  selectedBird = bird;
 
   const panel = document.getElementById('bird-detail');
   panel.innerHTML = `
@@ -91,7 +124,6 @@ function showBirdDetail(id) {
   document.getElementById('back-btn').addEventListener('click', () => {
     panel.classList.add('hidden');
     document.getElementById('bird-grid').classList.remove('hidden');
-    selectedBird = null;
   });
 
   document.getElementById('quick-log-btn').addEventListener('click', () => {
@@ -120,13 +152,13 @@ function renderDiary() {
   }
   const sorted = [...sightings].sort((a, b) => new Date(b.date) - new Date(a.date));
   list.innerHTML = sorted.map(s => `
-    <div class="sighting-card" data-sid="${s.id}">
+    <div class="sighting-card" data-sid="${escapeHtml(s.id)}">
       <div>
-        <h4>${s.birdName}</h4>
-        <div class="meta">${formatDate(s.date)}${s.location ? ' · ' + s.location : ''}</div>
-        ${s.notes ? `<div class="notes">"${s.notes}"</div>` : ''}
+        <h4>${escapeHtml(s.birdName)}</h4>
+        <div class="meta">${formatDate(s.date)}${s.location ? ' · ' + escapeHtml(s.location) : ''}</div>
+        ${s.notes ? `<div class="notes">"${escapeHtml(s.notes)}"</div>` : ''}
       </div>
-      <button class="del-btn" title="Delete" data-sid="${s.id}">✕</button>
+      <button class="del-btn" title="Delete sighting" data-sid="${escapeHtml(s.id)}">✕</button>
     </div>
   `).join('');
 
@@ -136,6 +168,9 @@ function renderDiary() {
 }
 
 function deleteSighting(id) {
+  const entry = sightings.find(s => s.id === id);
+  if (!entry) return;
+  if (!confirm(`Delete sighting of "${entry.birdName}" on ${formatDate(entry.date)}?`)) return;
   sightings = sightings.filter(s => s.id !== id);
   saveSightings();
   renderDiary();
@@ -186,13 +221,7 @@ function bindLogForm() {
     const notes = document.getElementById('log-notes').value.trim();
     if (!birdName || !date) return;
 
-    sightings.push({
-      id: Date.now().toString(),
-      birdName,
-      date,
-      location,
-      notes
-    });
+    sightings.push({ id: Date.now().toString(), birdName, date, location, notes });
     saveSightings();
     renderDiary();
     updateStats();
@@ -208,16 +237,46 @@ function bindLogForm() {
 
 function updateStats() {
   document.getElementById('stat-total').textContent = sightings.length;
-  document.getElementById('stat-species').textContent = new Set(sightings.map(s => s.birdName)).size;
+
+  const speciesCount = {};
+  sightings.forEach(s => {
+    speciesCount[s.birdName] = (speciesCount[s.birdName] || 0) + 1;
+  });
+  document.getElementById('stat-species').textContent = Object.keys(speciesCount).length;
+
   const thisMonth = sightings.filter(s => {
     const d = new Date(s.date + 'T12:00:00');
     const now = new Date();
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
   document.getElementById('stat-month').textContent = thisMonth;
+
+  const section = document.getElementById('top-species-section');
+  if (sightings.length === 0) {
+    section.innerHTML = '<p style="color:var(--muted);font-size:.9rem">Log sightings in your diary to build up statistics.</p>';
+    return;
+  }
+
+  const topSpecies = Object.entries(speciesCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  section.innerHTML = `
+    <h3 class="top-species-heading">Top Species</h3>
+    <div class="top-species-list">
+      ${topSpecies.map(([name, count], i) => `
+        <div class="top-species-row">
+          <span class="top-rank">${i + 1}</span>
+          <span class="top-name">${escapeHtml(name)}</span>
+          <span class="top-bar-wrap"><span class="top-bar" style="width:${Math.round(count / topSpecies[0][1] * 100)}%"></span></span>
+          <span class="top-count">${count}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
-// ─── Guide search / filter ────────────────────────────────────────────────────
+// ─── Guide controls ───────────────────────────────────────────────────────────
 
 function bindGuideControls() {
   const search = document.getElementById('bird-search');
@@ -231,6 +290,7 @@ function bindGuideControls() {
 
 window.addEventListener('DOMContentLoaded', () => {
   init().then(() => {
+    if (allBirds.length === 0) return;
     populateFamilyFilter();
     bindGuideControls();
     bindLogForm();

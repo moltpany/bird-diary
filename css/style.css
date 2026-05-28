@@ -10,6 +10,7 @@
   --bg: #f6faf7;
   --card-bg: #ffffff;
   --border: #c8e6c9;
+  --green-dark: #245a3f;
   --radius: 10px;
   --shadow: 0 2px 8px rgba(0,0,0,.08);
 }
@@ -154,7 +155,7 @@ main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
   margin-left: .5rem;
   transition: background .15s;
 }
-.log-btn:hover { background: #245a3f; }
+.log-btn:hover { background: var(--green-dark); }
 
 /* Diary section */
 .diary-empty { text-align: center; color: var(--muted); padding: 2rem 0; font-size: .95rem; }
@@ -208,7 +209,48 @@ main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
   font-size: .9rem;
   transition: background .15s;
 }
-.submit-btn:hover { background: #245a3f; }
+.submit-btn:hover { background: var(--green-dark); }
+
+/* Guide count */
+.guide-count {
+  align-self: center;
+  font-size: .8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Error banner */
+.error-banner {
+  background: #fdecea;
+  color: #c0392b;
+  padding: .75rem 1.5rem;
+  font-size: .9rem;
+  border-bottom: 1px solid #f5c6cb;
+}
+
+/* Top species */
+.top-species-heading {
+  color: var(--green);
+  font-size: 1rem;
+  margin-bottom: .75rem;
+}
+.top-species-list { display: flex; flex-direction: column; gap: .5rem; }
+.top-species-row {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr auto auto;
+  align-items: center;
+  gap: .6rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .6rem .9rem;
+  box-shadow: var(--shadow);
+}
+.top-rank { font-weight: 700; color: var(--muted); font-size: .85rem; text-align: center; }
+.top-name { font-size: .9rem; }
+.top-bar-wrap { background: var(--green-pale); border-radius: 4px; height: 8px; overflow: hidden; }
+.top-bar { display: block; height: 100%; background: var(--green-light); border-radius: 4px; transition: width .3s; }
+.top-count { font-size: .85rem; color: var(--muted); min-width: 2rem; text-align: right; }
 
 /* Hidden */
 .hidden { display: none; }
@@ -232,7 +274,10 @@ main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
 .stat-box .num { font-size: 1.8rem; font-weight: 700; color: var(--green); }
 .stat-box .lbl { font-size: .75rem; color: var(--muted); margin-top: .15rem; }
 
-@media (max-width: 500px) {
+@media (max-width: 600px) {
   .detail-grid { grid-template-columns: 1fr; }
   .bird-grid { grid-template-columns: 1fr; }
+  .top-species-row { grid-template-columns: 1.5rem 1fr auto; }
+  .top-bar-wrap { display: none; }
+  header h1 { font-size: 1.2rem; }
 }

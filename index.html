@@ -8,6 +8,8 @@
 </head>
 <body>
 
+<div id="error-banner" class="error-banner hidden"></div>
+
 <header>
   <span style="font-size:1.8rem">🐦</span>
   <div>
@@ -31,6 +33,7 @@
       <select id="family-filter">
         <option value="">All families</option>
       </select>
+      <span id="guide-count" class="guide-count"></span>
     </div>
     <div id="bird-detail" class="detail-panel hidden"></div>
     <div id="bird-grid" class="bird-grid"></div>
@@ -90,7 +93,7 @@
         <div class="lbl">This Month</div>
       </div>
     </div>
-    <p style="color:var(--muted);font-size:.9rem">Log more sightings in your diary to build up your statistics.</p>
+    <div id="top-species-section"></div>
   </section>
 
 </main>
