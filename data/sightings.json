@@ -264,5 +264,19 @@
     "rarity": "common",
     "thumb": "thumbs/2026-05-10_黑领椋鸟_1.jpg",
     "lifer": true
+  },
+  {
+    "id": "2026-05-29_珠颈斑鸠_001",
+    "date": "2026-05-29",
+    "time": "00:30",
+    "species_zh": "珠颈斑鸠",
+    "species_en": "Spotted Dove",
+    "species_sci": "Spilopelia chinensis",
+    "family": "鸠鸽科",
+    "area": "番禺区",
+    "city": "广州",
+    "rarity": "common",
+    "thumb": "thumbs/2026-05-29_珠颈斑鸠_1.jpg",
+    "lifer": true
   }
 ]
