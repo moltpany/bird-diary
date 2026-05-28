@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>鸟类图鉴 · Bird Diary</title>
+    <meta name="description" content="个人观鸟图鉴 — 每张照片解锁一个物种档案。">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..600,30..100;1,9..144,300..600,30..100&display=swap" rel="stylesheet">
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a3a8a'/%3E%3Ctext x='16' y='22' font-size='18' text-anchor='middle' fill='%23ffffff'%3E%F0%9F%90%A6%3C/text%3E%3C/svg%3E">
+
+    <style>
+      :root {
+        --ink-bg:        #f6f3ea;
+        --paper:         #ffffff;
+        --paper-tab:     #f3efe1;
+        --royal:         #1a3a8a;
+        --royal-deep:    #122766;
+        --rule-soft:     #c5cfe3;
+        --ink-primary:   #122766;
+        --ink-secondary: #4a5e85;
+        --ink-faint:     #8593ab;
+        --stamp-red:     #b8392c;
+        --bread:         #b07520;
+        --bread-soft:    #d4a25a;
+        --locked:        #2a2a3a;
+
+        --rare-common:   #4a7c59;
+        --rare-uncommon: #b07520;
+        --rare-rare:     #8b3a8b;
+        --rare-very:     #b8392c;
+      }
+      html.dark {
+        --ink-bg:        #0e1830;
+        --paper:         #142142;
+        --paper-tab:     #1a2750;
+        --royal:         #97b3ff;
+        --royal-deep:    #cfdcff;
+        --rule-soft:     #2a3a6a;
+        --ink-primary:   #ece4d2;
+        --ink-secondary: #a8b4cf;
+        --ink-faint:     #6c789a;
+        --bread:         #d4a25a;
+        --bread-soft:    #e6b97a;
+        --locked:        #0a0a14;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background-color: var(--ink-bg);
+        color: var(--ink-primary);
+        font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+        font-size: 14px;
+        line-height: 1.7;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        transition: background-color 0.3s, color 0.3s;
+      }
+      a { color: inherit; text-decoration: none; }
+
+      /* ─── banner ─── */
+      .banner {
+        border-bottom: 1px solid var(--rule-soft);
+        padding: 13px 36px;
+        font-size: 10px;
+        letter-spacing: 0.24em;
+        color: var(--ink-faint);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-transform: uppercase;
+        background: rgba(246,243,234,0.7);
+        backdrop-filter: blur(8px);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+      html.dark .banner { background: rgba(14,24,48,0.8); }
+      .banner .brand { color: var(--ink-primary); font-weight: 500; }
+      .banner .nav { display: flex; gap: 20px; align-items: center; }
+      .banner .nav a {
+        color: var(--ink-secondary);
+        border-bottom: 1px solid transparent;
+        padding-bottom: 1px;
+        transition: color 0.15s, border-color 0.15s;
+      }
+      .banner .nav a:hover { color: var(--royal); border-bottom-color: var(--royal); }
+      .mode-btn {
+        background: transparent;
+        border: 1px solid var(--rule-soft);
+        color: var(--ink-secondary);
+        font-family: inherit;
+        font-size: 9.5px;
+        letter-spacing: 0.2em;
+        padding: 4px 10px;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: border-color 0.15s, color 0.15s;
+      }
+      .mode-btn:hover { border-color: var(--royal); color: var(--royal); }
+
+      /* ─── layout ─── */
+      .wrap { max-width: 1100px; margin: 0 auto; padding: 0 36px 80px; }
+
+      /* ─── hero ─── */
+      .hero {
+        padding: 72px 0 48px;
+      }
+      .eyebrow {
+        font-size: 10px;
+        letter-spacing: 0.36em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin: 0 0 16px;
+        font-weight: 500;
+      }
+      .hero h1 {
+        font-family: 'Fraunces', serif;
+        font-size: clamp(42px, 7vw, 80px);
+        font-weight: 400;
+        letter-spacing: -0.02em;
+        margin: 0 0 6px;
+        line-height: 1;
+        color: var(--ink-primary);
+        font-variation-settings: "opsz" 144, "SOFT" 30;
+      }
+      .hero h1 .zh { color: var(--ink-primary); }
+      .hero h1 .en { color: var(--bread); font-style: italic; font-variation-settings: "opsz" 72, "SOFT" 100; font-size: 0.55em; display: block; margin-top: 4px; }
+      .hero-desc {
+        color: var(--ink-secondary);
+        margin: 20px 0 0;
+        font-size: 13px;
+        max-width: 60ch;
+        line-height: 1.8;
+      }
+
+      /* ─── stats bar ─── */
+      .stats-bar {
+        display: flex;
+        gap: 0;
+        margin: 36px 0 0;
+        border: 1px solid var(--royal);
+        background: var(--paper);
+        max-width: 560px;
+      }
+      .stat {
+        flex: 1;
+        padding: 18px 20px;
+        border-right: 1px solid var(--rule-soft);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .stat:last-child { border-right: none; }
+      .stat-label {
+        font-size: 9px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        font-weight: 500;
+      }
+      .stat-value {
+        font-family: 'Fraunces', serif;
+        font-size: 28px;
+        font-weight: 400;
+        color: var(--ink-primary);
+        line-height: 1;
+        font-variation-settings: "opsz" 36, "SOFT" 0;
+      }
+      .stat-sub {
+        font-size: 10px;
+        color: var(--ink-faint);
+        margin-top: 2px;
+      }
+
+      /* ─── filter bar ─── */
+      .filter-section {
+        margin: 56px 0 28px;
+        border-bottom: 1px solid var(--rule-soft);
+      }
+      .filter-label {
+        font-size: 9.5px;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin-bottom: 14px;
+        font-weight: 500;
+      }
+      .filter-tabs {
+        display: flex;
+        gap: 0;
+        flex-wrap: wrap;
+      }
+      .filter-tab {
+        padding: 8px 18px;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-secondary);
+        cursor: pointer;
+        border: 1px solid transparent;
+        border-bottom: none;
+        background: transparent;
+        font-family: inherit;
+        transition: all 0.15s;
+        position: relative;
+        bottom: -1px;
+      }
+      .filter-tab:hover { color: var(--royal); }
+      .filter-tab.active {
+        color: var(--royal);
+        background: var(--paper);
+        border-color: var(--rule-soft);
+        border-bottom-color: var(--paper);
+        font-weight: 500;
+      }
+
+      /* ─── sub-filter chips ─── */
+      .sub-filters {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 18px 0 24px;
+        min-height: 32px;
+      }
+      .chip {
+        padding: 5px 14px;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        border: 1px solid var(--rule-soft);
+        background: var(--paper);
+        color: var(--ink-secondary);
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.15s;
+      }
+      .chip:hover { border-color: var(--royal); color: var(--royal); }
+      .chip.active {
+        background: var(--royal);
+        color: #fff;
+        border-color: var(--royal);
+      }
+      html.dark .chip.active { background: var(--royal); color: var(--ink-bg); }
+
+      /* ─── bird grid ─── */
+      .bird-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+      }
+
+      /* ─── bird card ─── */
+      .bird-card {
+        background: var(--paper);
+        border: 1px solid var(--royal);
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow 0.2s, transform 0.2s;
+        cursor: pointer;
+        position: relative;
+      }
+      .bird-card:hover {
+        box-shadow: 0 12px 32px -16px rgba(18,39,102,0.4);
+        transform: translateY(-2px);
+      }
+      .bird-card.locked {
+        border-color: var(--rule-soft);
+        background: var(--paper-tab);
+        cursor: default;
+      }
+      .bird-card.locked:hover { box-shadow: none; transform: none; }
+
+      .card-photo {
+        width: 100%;
+        aspect-ratio: 1;
+        overflow: hidden;
+        background: var(--paper-tab);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      .card-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .card-photo .silhouette {
+        width: 70%;
+        height: 70%;
+        opacity: 0.18;
+        filter: grayscale(1);
+      }
+      .card-photo .lifer-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: var(--stamp-red);
+        color: #fff;
+        font-size: 8.5px;
+        letter-spacing: 0.2em;
+        padding: 3px 7px;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .card-body {
+        padding: 12px 14px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+      }
+      .card-zh {
+        font-family: 'Fraunces', serif;
+        font-size: 18px;
+        font-weight: 400;
+        color: var(--ink-primary);
+        line-height: 1.2;
+        font-variation-settings: "opsz" 24, "SOFT" 30;
+      }
+      .bird-card.locked .card-zh {
+        color: var(--ink-faint);
+        font-style: italic;
+      }
+      .card-en {
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        letter-spacing: 0.06em;
+      }
+      .card-meta {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 2px;
+      }
+      .card-tag {
+        font-size: 9.5px;
+        letter-spacing: 0.12em;
+        padding: 2px 7px;
+        border: 1px solid var(--rule-soft);
+        color: var(--ink-faint);
+      }
+      .rarity-common   { border-color: var(--rare-common);   color: var(--rare-common); }
+      .rarity-uncommon { border-color: var(--rare-uncommon); color: var(--rare-uncommon); }
+      .rarity-rare     { border-color: var(--rare-rare);     color: var(--rare-rare); }
+      .rarity-very_rare { border-color: var(--rare-very);   color: var(--rare-very); }
+
+      .card-sightings {
+        font-size: 10px;
+        color: var(--ink-faint);
+        margin-top: auto;
+        padding-top: 8px;
+        border-top: 1px dashed var(--rule-soft);
+      }
+
+      /* ─── empty state ─── */
+      .empty-state {
+        grid-column: 1 / -1;
+        padding: 72px 0;
+        text-align: center;
+        color: var(--ink-faint);
+      }
+      .empty-state .empty-icon {
+        font-size: 48px;
+        display: block;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+      .empty-state p {
+        font-family: 'Fraunces', serif;
+        font-size: 18px;
+        font-style: italic;
+        font-variation-settings: "opsz" 24, "SOFT" 100;
+        margin: 0 0 8px;
+        color: var(--ink-secondary);
+      }
+      .empty-state small {
+        font-size: 11px;
+        letter-spacing: 0.14em;
+      }
+
+      /* ─── detail panel (slide-in) ─── */
+      .detail-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(18,39,102,0.35);
+        z-index: 100;
+        display: none;
+        align-items: flex-end;
+        justify-content: flex-end;
+      }
+      .detail-overlay.open { display: flex; }
+      .detail-panel {
+        width: min(460px, 100vw);
+        height: 100vh;
+        background: var(--paper);
+        border-left: 1px solid var(--royal);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        animation: slideIn 0.22s ease;
+      }
+      @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+      .detail-close {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--rule-soft);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 9.5px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+      }
+      .detail-close button {
+        background: transparent;
+        border: 1px solid var(--rule-soft);
+        color: var(--ink-secondary);
+        font-family: inherit;
+        font-size: 9px;
+        letter-spacing: 0.2em;
+        padding: 4px 10px;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: all 0.15s;
+      }
+      .detail-close button:hover { border-color: var(--royal); color: var(--royal); }
+      .detail-photo {
+        width: 100%;
+        aspect-ratio: 4/3;
+        object-fit: cover;
+        display: block;
+        background: var(--paper-tab);
+      }
+      .detail-body { padding: 28px 28px 40px; flex: 1; }
+      .detail-zh {
+        font-family: 'Fraunces', serif;
+        font-size: 36px;
+        font-weight: 400;
+        margin: 0 0 2px;
+        font-variation-settings: "opsz" 48, "SOFT" 30;
+      }
+      .detail-sci {
+        font-size: 12px;
+        color: var(--ink-faint);
+        font-style: italic;
+        margin: 0 0 20px;
+      }
+      .detail-rows { display: flex; flex-direction: column; gap: 0; margin-bottom: 24px; }
+      .detail-row {
+        display: grid;
+        grid-template-columns: 100px 1fr;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--rule-soft);
+        font-size: 12.5px;
+      }
+      .detail-row dt { color: var(--ink-faint); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 500; padding-top: 2px; }
+      .detail-row dd { margin: 0; color: var(--ink-primary); }
+      .detail-sightings-list { margin-top: 20px; }
+      .detail-sightings-label { font-size: 9.5px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; margin-bottom: 12px; }
+      .sighting-entry {
+        padding: 10px 0;
+        border-bottom: 1px dashed var(--rule-soft);
+        font-size: 12px;
+        color: var(--ink-secondary);
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .sighting-entry .s-date { color: var(--ink-faint); font-size: 11px; white-space: nowrap; }
+
+      /* ─── footer ─── */
+      .site-footer {
+        border-top: 1px solid var(--rule-soft);
+        padding: 22px 36px;
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        color: var(--ink-faint);
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        text-transform: uppercase;
+      }
+      .site-footer a { border-bottom: 1px solid transparent; padding-bottom: 1px; transition: color 0.15s, border-color 0.15s; }
+      .site-footer a:hover { color: var(--royal); border-bottom-color: var(--royal); }
+
+      @media (max-width: 600px) {
+        .wrap { padding: 0 18px 60px; }
+        .banner { padding: 12px 18px; }
+        .stats-bar { flex-direction: column; max-width: 100%; }
+        .stat { border-right: none; border-bottom: 1px solid var(--rule-soft); }
+        .stat:last-child { border-bottom: none; }
+        .bird-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+        .detail-panel { width: 100vw; }
+        .site-footer { padding: 18px; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <nav class="banner" aria-label="Bird Diary navigation">
+      <span class="brand">🐦 bird diary &nbsp;<span style="opacity:.4">·</span>&nbsp; moltpany</span>
+      <div class="nav" id="nav-links">
+        <a href="https://moltpany.github.io/">← archive</a>
+        <button class="mode-btn" id="mode-toggle" aria-label="Toggle dark mode">dark</button>
+      </div>
+    </nav>
+
+    <div class="wrap">
+
+      <!-- ─── HERO ─── -->
+      <header class="hero">
+        <p class="eyebrow">// 个人图鉴 · field guide</p>
+        <h1>
+          <span class="zh">鸟类图鉴</span>
+          <span class="en">Bird Diary</span>
+        </h1>
+        <p class="hero-desc">
+          每张照片解锁一个物种档案。<br>
+          拍到的亮起，还没拍到的等待发现。
+        </p>
+
+        <div class="stats-bar" id="stats-bar">
+          <div class="stat">
+            <span class="stat-label">已收录物种</span>
+            <span class="stat-value" id="stat-species">0</span>
+            <span class="stat-sub">species unlocked</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">总目击次数</span>
+            <span class="stat-value" id="stat-sightings">0</span>
+            <span class="stat-sub">total sightings</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">最稀有</span>
+            <span class="stat-value" id="stat-rarest" style="font-size:16px;padding-top:6px">—</span>
+            <span class="stat-sub" id="stat-rarest-label">rarest species</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- ─── FILTERS ─── -->
+      <div class="filter-section" aria-label="Filter field guide">
+        <p class="filter-label">// 按分类浏览</p>
+        <div class="filter-tabs" role="tablist">
+          <button class="filter-tab active" data-tab="all" role="tab" aria-selected="true">全部</button>
+          <button class="filter-tab" data-tab="family" role="tab" aria-selected="false">科目</button>
+          <button class="filter-tab" data-tab="area" role="tab" aria-selected="false">城市区域</button>
+          <button class="filter-tab" data-tab="rarity" role="tab" aria-selected="false">稀有度</button>
+        </div>
+      </div>
+
+      <div class="sub-filters" id="sub-filters" aria-label="Sub-filter chips"></div>
+
+      <!-- ─── BIRD GRID ─── -->
+      <main class="bird-grid" id="bird-grid" aria-label="Bird field guide"></main>
+
+    </div>
+
+    <!-- ─── DETAIL PANEL ─── -->
+    <div class="detail-overlay" id="detail-overlay" role="dialog" aria-modal="true" aria-label="物种详情">
+      <aside class="detail-panel" id="detail-panel">
+        <div class="detail-close">
+          <span>// 物种档案</span>
+          <button id="detail-close-btn">关闭 ×</button>
+        </div>
+        <img class="detail-photo" id="detail-photo" src="" alt="">
+        <div class="detail-body">
+          <h2 class="detail-zh" id="detail-zh"></h2>
+          <p class="detail-sci" id="detail-sci"></p>
+          <dl class="detail-rows" id="detail-rows"></dl>
+          <div class="detail-sightings-list" id="detail-sightings-list"></div>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="site-footer">
+      <span>© 2026 moltpany · bird diary</span>
+      <span>by <a href="https://github.com/moltpany/Agent-Bird">Agent-Bird</a> &amp; <a href="https://github.com/moltpany/Agent-Mappy">Agent-Mappy</a></span>
+    </footer>
+
+    <script>
+      // ─── dark mode ───
+      const modeBtn = document.getElementById('mode-toggle');
+      const saved = localStorage.getItem('bd-mode');
+      if (saved === 'dark') { document.documentElement.classList.add('dark'); modeBtn.textContent = 'light'; }
+      modeBtn.addEventListener('click', () => {
+        const dark = document.documentElement.classList.toggle('dark');
+        modeBtn.textContent = dark ? 'light' : 'dark';
+        localStorage.setItem('bd-mode', dark ? 'dark' : 'light');
+      });
+
+      // ─── rarity helpers ───
+      const RARITY_ORDER = ['very_rare', 'rare', 'uncommon', 'common'];
+      const RARITY_ZH = { common: '常见', uncommon: '不常见', rare: '稀有', very_rare: '珍稀' };
+
+      // ─── silhouette SVG (generic bird) ───
+      const SILHOUETTE_SVG = `<svg viewBox="0 0 100 100" fill="currentColor" class="silhouette">
+        <ellipse cx="50" cy="55" rx="22" ry="15"/>
+        <circle cx="62" cy="35" r="10"/>
+        <path d="M30 55 Q10 48 8 38 Q20 42 30 50Z"/>
+        <path d="M48 68 L44 88 L52 88Z"/>
+        <path d="M54 68 L50 88 L58 88Z"/>
+        <ellipse cx="66" cy="33" rx="3" ry="2"/>
+        <path d="M72 34 L80 32 L74 37Z"/>
+      </svg>`;
+
+      // ─── data & state ───
+      let allSightings = [];
+      let speciesMap = {};   // species_zh → { species, sightings[] }
+      let activeTab = 'all';
+      let activeChip = 'all';
+
+      async function loadData() {
+        try {
+          const res = await fetch('data/sightings.json');
+          allSightings = await res.json();
+        } catch { allSightings = []; }
+        buildSpeciesMap();
+        renderStats();
+        renderSubFilters();
+        renderGrid();
+      }
+
+      function buildSpeciesMap() {
+        speciesMap = {};
+        for (const s of allSightings) {
+          if (!speciesMap[s.species_zh]) {
+            speciesMap[s.species_zh] = { species: s, sightings: [] };
+          }
+          speciesMap[s.species_zh].sightings.push(s);
+          // keep the rarest sighting as species representative
+          const cur = speciesMap[s.species_zh].species;
+          if (RARITY_ORDER.indexOf(s.rarity) < RARITY_ORDER.indexOf(cur.rarity)) {
+            speciesMap[s.species_zh].species = s;
+          }
+        }
+      }
+
+      function renderStats() {
+        const species = Object.keys(speciesMap);
+        document.getElementById('stat-species').textContent = species.length;
+        document.getElementById('stat-sightings').textContent = allSightings.length;
+
+        let rarest = null;
+        for (const zh of species) {
+          const s = speciesMap[zh].species;
+          if (!rarest || RARITY_ORDER.indexOf(s.rarity) < RARITY_ORDER.indexOf(rarest.rarity)) rarest = s;
+        }
+        if (rarest) {
+          document.getElementById('stat-rarest').textContent = rarest.species_zh;
+          document.getElementById('stat-rarest-label').textContent = RARITY_ZH[rarest.rarity] || rarest.rarity;
+        }
+      }
+
+      function getFilterValues() {
+        const keys = Object.keys(speciesMap);
+        if (activeTab === 'family') return [...new Set(keys.map(k => speciesMap[k].species.family).filter(Boolean))].sort();
+        if (activeTab === 'area')   return [...new Set(keys.map(k => speciesMap[k].species.area).filter(Boolean))].sort();
+        if (activeTab === 'rarity') return RARITY_ORDER.filter(r => keys.some(k => speciesMap[k].species.rarity === r));
+        return [];
+      }
+
+      function renderSubFilters() {
+        const container = document.getElementById('sub-filters');
+        container.innerHTML = '';
+        if (activeTab === 'all') { activeChip = 'all'; return; }
+        const values = getFilterValues();
+        if (!values.length) return;
+
+        const allChip = document.createElement('button');
+        allChip.className = 'chip' + (activeChip === 'all' ? ' active' : '');
+        allChip.textContent = '全部';
+        allChip.addEventListener('click', () => { activeChip = 'all'; renderSubFilters(); renderGrid(); });
+        container.appendChild(allChip);
+
+        for (const v of values) {
+          const chip = document.createElement('button');
+          chip.className = 'chip' + (activeChip === v ? ' active' : '');
+          chip.textContent = activeTab === 'rarity' ? (RARITY_ZH[v] || v) : v;
+          chip.addEventListener('click', () => { activeChip = v; renderSubFilters(); renderGrid(); });
+          container.appendChild(chip);
+        }
+      }
+
+      function getFilteredSpecies() {
+        const keys = Object.keys(speciesMap);
+        if (activeTab === 'all' || activeChip === 'all') return keys;
+        return keys.filter(k => {
+          const s = speciesMap[k].species;
+          if (activeTab === 'family') return s.family === activeChip;
+          if (activeTab === 'area')   return s.area === activeChip;
+          if (activeTab === 'rarity') return s.rarity === activeChip;
+          return true;
+        });
+      }
+
+      function renderGrid() {
+        const grid = document.getElementById('bird-grid');
+        grid.innerHTML = '';
+        const filtered = getFilteredSpecies();
+
+        if (!filtered.length) {
+          const empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.innerHTML = `<span class="empty-icon">🐦</span><p>图鉴还是空的</p><small>// 拍到第一只鸟，这里就会亮起来</small>`;
+          grid.appendChild(empty);
+          return;
+        }
+
+        // sort: rarity (rarest first), then alphabetical
+        filtered.sort((a, b) => {
+          const ri = RARITY_ORDER.indexOf(speciesMap[a].species.rarity) - RARITY_ORDER.indexOf(speciesMap[b].species.rarity);
+          return ri !== 0 ? ri : a.localeCompare(b, 'zh');
+        });
+
+        for (const zh of filtered) {
+          const { species, sightings } = speciesMap[zh];
+          const card = document.createElement('article');
+          card.className = 'bird-card';
+          card.setAttribute('role', 'button');
+          card.setAttribute('tabindex', '0');
+          card.setAttribute('aria-label', zh);
+
+          const photoDiv = document.createElement('div');
+          photoDiv.className = 'card-photo';
+
+          if (species.thumb) {
+            const img = document.createElement('img');
+            img.src = species.thumb;
+            img.alt = zh;
+            img.loading = 'lazy';
+            photoDiv.appendChild(img);
+          } else {
+            photoDiv.innerHTML = SILHOUETTE_SVG;
+          }
+
+          if (sightings.some(s => s.lifer)) {
+            const badge = document.createElement('span');
+            badge.className = 'lifer-badge';
+            badge.textContent = 'LIFER';
+            photoDiv.appendChild(badge);
+          }
+
+          const rarityClass = 'rarity-' + (species.rarity || 'common');
+          card.innerHTML = `
+            <div class="card-body">
+              <span class="card-zh">${zh}</span>
+              <span class="card-en">${species.species_en || ''}</span>
+              <div class="card-meta">
+                ${species.family ? `<span class="card-tag">${species.family}</span>` : ''}
+                ${species.area ? `<span class="card-tag">${species.area}</span>` : ''}
+                ${species.rarity ? `<span class="card-tag ${rarityClass}">${RARITY_ZH[species.rarity] || species.rarity}</span>` : ''}
+              </div>
+              <div class="card-sightings">× ${sightings.length} 次目击 · 首次 ${sightings[sightings.length-1]?.date || '—'}</div>
+            </div>`;
+          card.prepend(photoDiv);
+
+          const openDetail = () => openDetailPanel(zh);
+          card.addEventListener('click', openDetail);
+          card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') openDetail(); });
+          grid.appendChild(card);
+        }
+      }
+
+      // ─── detail panel ───
+      function openDetailPanel(zh) {
+        const { species, sightings } = speciesMap[zh];
+        document.getElementById('detail-zh').textContent = zh;
+        document.getElementById('detail-sci').textContent = species.species_sci || '';
+
+        const photo = document.getElementById('detail-photo');
+        if (species.thumb) { photo.src = species.thumb; photo.alt = zh; photo.style.display = ''; }
+        else { photo.style.display = 'none'; }
+
+        const rows = [
+          ['英文名', species.species_en],
+          ['科', species.family],
+          ['地区', species.area],
+          ['城市', species.city],
+          ['稀有度', RARITY_ZH[species.rarity] || species.rarity],
+        ].filter(([, v]) => v);
+
+        document.getElementById('detail-rows').innerHTML = rows.map(([k, v]) =>
+          `<div class="detail-row"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+
+        const list = document.getElementById('detail-sightings-list');
+        list.innerHTML = `<div class="detail-sightings-label">// 目击记录 · ${sightings.length} 次</div>` +
+          sightings.map(s => `
+            <div class="sighting-entry">
+              <span>${s.time || ''} ${s.area || ''}</span>
+              <span class="s-date">${s.date}</span>
+            </div>`).join('');
+
+        document.getElementById('detail-overlay').classList.add('open');
+        document.getElementById('detail-close-btn').focus();
+      }
+
+      document.getElementById('detail-close-btn').addEventListener('click', () => {
+        document.getElementById('detail-overlay').classList.remove('open');
+      });
+      document.getElementById('detail-overlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('detail-overlay'))
+          document.getElementById('detail-overlay').classList.remove('open');
+      });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') document.getElementById('detail-overlay').classList.remove('open');
+      });
+
+      // ─── tab switching ───
+      document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.filter-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+          tab.classList.add('active');
+          tab.setAttribute('aria-selected', 'true');
+          activeTab = tab.dataset.tab;
+          activeChip = 'all';
+          renderSubFilters();
+          renderGrid();
+        });
+      });
+
+      loadData();
+    </script>
+  </body>
+</html>
