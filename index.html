@@ -542,7 +542,8 @@
     <nav class="banner" aria-label="Bird Diary navigation">
       <span class="brand">🐦 bird diary &nbsp;<span style="opacity:.4">·</span>&nbsp; moltpany</span>
       <div class="nav" id="nav-links">
-        <a href="https://moltpany.github.io/">← archive</a>
+        <a href="https://moltpany.github.io/" data-i18n="archive">← archive</a>
+        <button class="mode-btn" id="lang-toggle" aria-label="Switch language">EN</button>
         <button class="mode-btn" id="mode-toggle" aria-label="Toggle dark mode">dark</button>
       </div>
     </nav>
@@ -551,29 +552,29 @@
 
       <!-- ─── HERO ─── -->
       <header class="hero">
-        <p class="eyebrow">// 个人图鉴 · field guide</p>
+        <p class="eyebrow" data-i18n="eyebrow">// 个人图鉴 · field guide</p>
         <h1>
           <span class="zh">鸟类图鉴</span>
           <span class="en">Bird Diary</span>
         </h1>
-        <p class="hero-desc">
+        <p class="hero-desc" id="hero-desc">
           每张照片解锁一个物种档案。<br>
           拍到的亮起，还没拍到的等待发现。
         </p>
 
         <div class="stats-bar" id="stats-bar">
           <div class="stat">
-            <span class="stat-label">已收录物种</span>
+            <span class="stat-label" data-i18n="statSpecies">已收录物种</span>
             <span class="stat-value" id="stat-species">0</span>
-            <span class="stat-sub">species unlocked</span>
+            <span class="stat-sub" data-i18n="statSpeciesSub">species unlocked</span>
           </div>
           <div class="stat">
-            <span class="stat-label">总目击次数</span>
+            <span class="stat-label" data-i18n="statSightings">总目击次数</span>
             <span class="stat-value" id="stat-sightings">0</span>
-            <span class="stat-sub">total sightings</span>
+            <span class="stat-sub" data-i18n="statSightingsSub">total sightings</span>
           </div>
           <div class="stat">
-            <span class="stat-label">最稀有</span>
+            <span class="stat-label" data-i18n="statRarest">最稀有</span>
             <span class="stat-value" id="stat-rarest" style="font-size:16px;padding-top:6px">—</span>
             <span class="stat-sub" id="stat-rarest-label">rarest species</span>
           </div>
@@ -582,12 +583,12 @@
 
       <!-- ─── FILTERS ─── -->
       <div class="filter-section" aria-label="Filter field guide">
-        <p class="filter-label">// 按分类浏览</p>
+        <p class="filter-label" data-i18n="filterLabel">// 按分类浏览</p>
         <div class="filter-tabs" role="tablist">
-          <button class="filter-tab active" data-tab="all" role="tab" aria-selected="true">全部</button>
-          <button class="filter-tab" data-tab="family" role="tab" aria-selected="false">科目</button>
-          <button class="filter-tab" data-tab="area" role="tab" aria-selected="false">城市区域</button>
-          <button class="filter-tab" data-tab="rarity" role="tab" aria-selected="false">稀有度</button>
+          <button class="filter-tab active" data-tab="all" role="tab" aria-selected="true" data-i18n="tabAll">全部</button>
+          <button class="filter-tab" data-tab="family" role="tab" aria-selected="false" data-i18n="tabFamily">科目</button>
+          <button class="filter-tab" data-tab="area" role="tab" aria-selected="false" data-i18n="tabArea">城市区域</button>
+          <button class="filter-tab" data-tab="rarity" role="tab" aria-selected="false" data-i18n="tabRarity">稀有度</button>
         </div>
       </div>
 
@@ -603,8 +604,8 @@
     <div class="detail-overlay" id="detail-overlay" role="dialog" aria-modal="true" aria-label="物种详情">
       <aside class="detail-panel" id="detail-panel">
         <div class="detail-close">
-          <span>// 物种档案</span>
-          <button id="detail-close-btn">关闭 ×</button>
+          <span data-i18n="detailLabel">// 物种档案</span>
+          <button id="detail-close-btn" data-i18n="detailClose">关闭 ×</button>
         </div>
         <img class="detail-photo" id="detail-photo" src="" alt="">
         <div class="detail-body">
@@ -630,6 +631,88 @@
         const dark = document.documentElement.classList.toggle('dark');
         modeBtn.textContent = dark ? 'light' : 'dark';
         localStorage.setItem('bd-mode', dark ? 'dark' : 'light');
+      });
+
+      // ─── i18n / 中英切换 ───
+      const I18N = {
+        zh: {
+          docTitle: '鸟类图鉴 · Bird Diary',
+          archive: '← 档案馆',
+          eyebrow: '// 个人图鉴 · field guide',
+          heroDesc: '每张照片解锁一个物种档案。<br>拍到的亮起，还没拍到的等待发现。',
+          statSpecies: '已收录物种',   statSpeciesSub: 'species unlocked',
+          statSightings: '总目击次数', statSightingsSub: 'total sightings',
+          statRarest: '最稀有',
+          filterLabel: '// 按分类浏览',
+          tabAll: '全部', tabFamily: '科目', tabArea: '城市区域', tabRarity: '稀有度',
+          chipAll: '全部',
+          detailLabel: '// 物种档案', detailClose: '关闭 ×',
+          rowEn: '英文名', rowZh: '中文名', rowFamily: '科', rowArea: '地区', rowCity: '城市', rowRarity: '稀有度',
+          emptyTitle: '图鉴还是空的', emptyHint: '// 拍到第一只鸟，这里就会亮起来',
+          countAll: n => `// ${n} 物种已收录`,
+          countFiltered: n => `// 筛选结果：${n} 物种`,
+          cardSightings: (n, d) => `× ${n} 次目击 · 首次 ${d}`,
+          detailSightings: n => `// 目击记录 · ${n} 次`,
+          loadError: m => `// 数据加载失败 · ${m} · 请刷新重试`,
+        },
+        en: {
+          docTitle: 'Bird Diary · 鸟类图鉴',
+          archive: '← archive',
+          eyebrow: '// personal field guide',
+          heroDesc: 'Every photo unlocks a species profile.<br>Spotted ones light up; the rest wait to be found.',
+          statSpecies: 'Species Unlocked', statSpeciesSub: '已收录物种',
+          statSightings: 'Total Sightings', statSightingsSub: '总目击次数',
+          statRarest: 'Rarest',
+          filterLabel: '// browse by category',
+          tabAll: 'All', tabFamily: 'Family', tabArea: 'Region', tabRarity: 'Rarity',
+          chipAll: 'All',
+          detailLabel: '// species profile', detailClose: 'close ×',
+          rowEn: 'English', rowZh: 'Chinese', rowFamily: 'Family', rowArea: 'District', rowCity: 'City', rowRarity: 'Rarity',
+          emptyTitle: 'The guide is empty', emptyHint: '// spot your first bird and it lights up here',
+          countAll: n => `// ${n} species unlocked`,
+          countFiltered: n => `// ${n} species matched`,
+          cardSightings: (n, d) => `× ${n} sighting${n !== 1 ? 's' : ''} · first ${d}`,
+          detailSightings: n => `// sighting log · ${n}×`,
+          loadError: m => `// failed to load data · ${m} · please refresh`,
+        },
+      };
+      const RARITY_EN = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', very_rare: 'Very Rare', domestic: 'Domestic' };
+
+      let lang = localStorage.getItem('bd-lang') === 'en' ? 'en' : 'zh';
+      function t() { return I18N[lang]; }
+      function rarityLabel(r) { return (lang === 'zh' ? RARITY_ZH[r] : RARITY_EN[r]) || r; }
+      // primary / secondary species name based on current language
+      function speciesPrimary(s)   { return lang === 'zh' ? s.species_zh : (s.species_en || s.species_zh); }
+      function speciesSecondary(s) { return lang === 'zh' ? (s.species_en || '') : s.species_zh; }
+
+      const langBtn = document.getElementById('lang-toggle');
+
+      function applyLang() {
+        const dict = t();
+        document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+        document.title = dict.docTitle;
+        langBtn.textContent = lang === 'zh' ? 'EN' : '中文';
+
+        // static text nodes
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.dataset.i18n;
+          if (dict[key] != null && typeof dict[key] === 'string') el.textContent = dict[key];
+        });
+        document.getElementById('hero-desc').innerHTML = dict.heroDesc;
+
+        localStorage.setItem('bd-lang', lang);
+
+        // re-render dynamic content if data is ready
+        if (allSightings.length || Object.keys(speciesMap).length) {
+          renderStats();
+          renderSubFilters();
+          renderGrid();
+        }
+      }
+
+      langBtn.addEventListener('click', () => {
+        lang = lang === 'zh' ? 'en' : 'zh';
+        applyLang();
       });
 
       // ─── utilities ───
@@ -676,7 +759,7 @@
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           allSightings = await res.json();
         } catch (err) {
-          showError(`// 数据加载失败 · ${err.message} · 请刷新重试`);
+          showError(t().loadError(err.message));
           allSightings = [];
         }
         buildSpeciesMap();
@@ -712,8 +795,8 @@
           if (!rarest || rarityRank(s.rarity) < rarityRank(rarest.rarity)) rarest = s;
         }
         if (rarest) {
-          document.getElementById('stat-rarest').textContent = rarest.species_zh;
-          document.getElementById('stat-rarest-label').textContent = RARITY_ZH[rarest.rarity] || rarest.rarity;
+          document.getElementById('stat-rarest').textContent = speciesPrimary(rarest);
+          document.getElementById('stat-rarest-label').textContent = rarityLabel(rarest.rarity);
         }
       }
 
@@ -734,14 +817,14 @@
 
         const allChip = document.createElement('button');
         allChip.className = 'chip' + (activeChip === 'all' ? ' active' : '');
-        allChip.textContent = '全部';
+        allChip.textContent = t().chipAll;
         allChip.addEventListener('click', () => { activeChip = 'all'; renderSubFilters(); renderGrid(); });
         container.appendChild(allChip);
 
         for (const v of values) {
           const chip = document.createElement('button');
           chip.className = 'chip' + (activeChip === v ? ' active' : '');
-          chip.textContent = activeTab === 'rarity' ? (RARITY_ZH[v] || v) : v;
+          chip.textContent = activeTab === 'rarity' ? rarityLabel(v) : v;
           chip.addEventListener('click', () => { activeChip = v; renderSubFilters(); renderGrid(); });
           container.appendChild(chip);
         }
@@ -768,15 +851,15 @@
 
         // update result count
         if (activeTab === 'all' || activeChip === 'all') {
-          countEl.textContent = total ? `// ${total} 物种已收录` : '';
+          countEl.textContent = total ? t().countAll(total) : '';
         } else {
-          countEl.textContent = `// 筛选结果：${filtered.length} 物种`;
+          countEl.textContent = t().countFiltered(filtered.length);
         }
 
         if (!filtered.length) {
           const empty = document.createElement('div');
           empty.className = 'empty-state';
-          empty.innerHTML = `<span class="empty-icon">🐦</span><p>图鉴还是空的</p><small>// 拍到第一只鸟，这里就会亮起来</small>`;
+          empty.innerHTML = `<span class="empty-icon">🐦</span><p>${escapeHtml(t().emptyTitle)}</p><small>${escapeHtml(t().emptyHint)}</small>`;
           grid.appendChild(empty);
           return;
         }
@@ -793,7 +876,7 @@
           card.className = 'bird-card';
           card.setAttribute('role', 'button');
           card.setAttribute('tabindex', '0');
-          card.setAttribute('aria-label', zh);
+          card.setAttribute('aria-label', speciesPrimary(species));
 
           const photoDiv = document.createElement('div');
           photoDiv.className = 'card-photo';
@@ -820,14 +903,14 @@
           const firstDate = sightings.reduce((m, s) => s.date < m ? s.date : m, sightings[0].date);
           card.innerHTML = `
             <div class="card-body">
-              <span class="card-zh">${escapeHtml(zh)}</span>
-              <span class="card-en">${escapeHtml(species.species_en || '')}</span>
+              <span class="card-zh">${escapeHtml(speciesPrimary(species))}</span>
+              <span class="card-en">${escapeHtml(speciesSecondary(species))}</span>
               <div class="card-meta">
                 ${species.family ? `<span class="card-tag">${escapeHtml(species.family)}</span>` : ''}
                 ${species.area ? `<span class="card-tag">${escapeHtml(species.area)}</span>` : ''}
-                ${safeRarity ? `<span class="card-tag ${rarityClass}">${escapeHtml(RARITY_ZH[safeRarity] || safeRarity)}</span>` : ''}
+                ${safeRarity ? `<span class="card-tag ${rarityClass}">${escapeHtml(rarityLabel(safeRarity))}</span>` : ''}
               </div>
-              <div class="card-sightings">× ${sightings.length} 次目击 · 首次 ${escapeHtml(firstDate)}</div>
+              <div class="card-sightings">${escapeHtml(t().cardSightings(sightings.length, firstDate))}</div>
             </div>`;
           card.prepend(photoDiv);
 
@@ -841,19 +924,24 @@
       // ─── detail panel ───
       function openDetailPanel(zh) {
         const { species, sightings } = speciesMap[zh];
-        document.getElementById('detail-zh').textContent = zh;
+        document.getElementById('detail-zh').textContent = speciesPrimary(species);
         document.getElementById('detail-sci').textContent = species.species_sci || '';
 
         const photo = document.getElementById('detail-photo');
         if (species.thumb) { photo.src = species.thumb; photo.alt = zh; photo.style.display = ''; }
         else { photo.style.display = 'none'; }
 
+        const dict = t();
+        // show the "other" name as a row: in zh mode → English name; in en mode → Chinese name
+        const otherName = lang === 'zh'
+          ? [dict.rowEn, species.species_en]
+          : [dict.rowZh, species.species_zh];
         const rows = [
-          ['英文名', species.species_en],
-          ['科', species.family],
-          ['地区', species.area],
-          ['城市', species.city],
-          ['稀有度', RARITY_ZH[species.rarity] || species.rarity],
+          otherName,
+          [dict.rowFamily, species.family],
+          [dict.rowArea, species.area],
+          [dict.rowCity, species.city],
+          [dict.rowRarity, rarityLabel(species.rarity)],
         ].filter(([, v]) => v);
 
         document.getElementById('detail-rows').innerHTML = rows.map(([k, v]) =>
@@ -861,7 +949,7 @@
 
         const list = document.getElementById('detail-sightings-list');
         const ordered = [...sightings].sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || ''));
-        list.innerHTML = `<div class="detail-sightings-label">// 目击记录 · ${sightings.length} 次</div>` +
+        list.innerHTML = `<div class="detail-sightings-label">${escapeHtml(dict.detailSightings(sightings.length))}</div>` +
           ordered.map(s => `
             <div class="sighting-entry">
               <span>${escapeHtml(s.time || '')} ${escapeHtml(s.area || '')}</span>
@@ -896,6 +984,7 @@
         });
       });
 
+      applyLang();
       loadData();
     </script>
   </body>
