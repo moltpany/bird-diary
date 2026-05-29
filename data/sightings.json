@@ -306,5 +306,19 @@
     "rarity": "common",
     "thumb": "thumbs/2026-05-29_红头长尾山雀_1.jpg",
     "lifer": true
+  },
+  {
+    "id": "2026-05-29_鸿雁_001",
+    "date": "2026-05-29",
+    "time": "11:47",
+    "species_zh": "鸿雁",
+    "species_en": "Swan Goose",
+    "species_sci": "Anser cygnoides",
+    "family": "鸭科",
+    "area": "鄞州区",
+    "city": "宁波",
+    "rarity": "rare",
+    "thumb": "thumbs/2026-05-29_鸿雁_1.jpg",
+    "lifer": true
   }
 ]
