@@ -506,9 +506,38 @@
         .detail-panel { width: 100vw; }
         .site-footer { padding: 18px; }
       }
+
+      /* keyboard focus ring — only shown during keyboard navigation */
+      :focus-visible { outline: 2px solid var(--royal); outline-offset: 3px; }
+      :focus:not(:focus-visible) { outline: none; }
+
+      /* error banner */
+      .error-banner {
+        background: #fdecea;
+        color: var(--stamp-red);
+        padding: 10px 36px;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        border-bottom: 1px solid #ebbdba;
+        display: none;
+      }
+      html.dark .error-banner { background: #2a1010; border-bottom-color: #4a2020; }
+
+      /* filter result count */
+      .filter-count {
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        color: var(--ink-faint);
+        margin: 0 0 18px;
+        text-transform: uppercase;
+        min-height: 1.5em;
+      }
     </style>
   </head>
   <body>
+
+    <div class="error-banner" id="error-banner" role="alert"></div>
 
     <nav class="banner" aria-label="Bird Diary navigation">
       <span class="brand">🐦 bird diary &nbsp;<span style="opacity:.4">·</span>&nbsp; moltpany</span>
@@ -565,6 +594,7 @@
       <div class="sub-filters" id="sub-filters" aria-label="Sub-filter chips"></div>
 
       <!-- ─── BIRD GRID ─── -->
+      <p class="filter-count" id="filter-count" aria-live="polite"></p>
       <main class="bird-grid" id="bird-grid" aria-label="Bird field guide"></main>
 
     </div>
@@ -602,6 +632,18 @@
         localStorage.setItem('bd-mode', dark ? 'dark' : 'light');
       });
 
+      // ─── utilities ───
+      function escapeHtml(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      }
+
+      function showError(msg) {
+        const el = document.getElementById('error-banner');
+        el.textContent = msg;
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 7000);
+      }
+
       // ─── rarity helpers ───
       // order = rarest → least rare; 'domestic'(驯化/家养) is not "rare", it sorts last
       const RARITY_ORDER = ['very_rare', 'rare', 'uncommon', 'common', 'domestic'];
@@ -631,8 +673,12 @@
       async function loadData() {
         try {
           const res = await fetch('data/sightings.json');
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
           allSightings = await res.json();
-        } catch { allSightings = []; }
+        } catch (err) {
+          showError(`// 数据加载失败 · ${err.message} · 请刷新重试`);
+          allSightings = [];
+        }
         buildSpeciesMap();
         renderStats();
         renderSubFilters();
@@ -715,8 +761,17 @@
 
       function renderGrid() {
         const grid = document.getElementById('bird-grid');
+        const countEl = document.getElementById('filter-count');
         grid.innerHTML = '';
         const filtered = getFilteredSpecies();
+        const total = Object.keys(speciesMap).length;
+
+        // update result count
+        if (activeTab === 'all' || activeChip === 'all') {
+          countEl.textContent = total ? `// ${total} 物种已收录` : '';
+        } else {
+          countEl.textContent = `// 筛选结果：${filtered.length} 物种`;
+        }
 
         if (!filtered.length) {
           const empty = document.createElement('div');
@@ -746,7 +801,7 @@
           if (species.thumb) {
             const img = document.createElement('img');
             img.src = species.thumb;
-            img.alt = zh;
+            img.alt = escapeHtml(zh);
             img.loading = 'lazy';
             photoDiv.appendChild(img);
           } else {
@@ -760,23 +815,25 @@
             photoDiv.appendChild(badge);
           }
 
-          const rarityClass = 'rarity-' + (species.rarity || 'common');
+          const safeRarity = /^[a-z_]+$/.test(species.rarity || '') ? species.rarity : 'common';
+          const rarityClass = 'rarity-' + safeRarity;
+          const firstDate = sightings.reduce((m, s) => s.date < m ? s.date : m, sightings[0].date);
           card.innerHTML = `
             <div class="card-body">
-              <span class="card-zh">${zh}</span>
-              <span class="card-en">${species.species_en || ''}</span>
+              <span class="card-zh">${escapeHtml(zh)}</span>
+              <span class="card-en">${escapeHtml(species.species_en || '')}</span>
               <div class="card-meta">
-                ${species.family ? `<span class="card-tag">${species.family}</span>` : ''}
-                ${species.area ? `<span class="card-tag">${species.area}</span>` : ''}
-                ${species.rarity ? `<span class="card-tag ${rarityClass}">${RARITY_ZH[species.rarity] || species.rarity}</span>` : ''}
+                ${species.family ? `<span class="card-tag">${escapeHtml(species.family)}</span>` : ''}
+                ${species.area ? `<span class="card-tag">${escapeHtml(species.area)}</span>` : ''}
+                ${safeRarity ? `<span class="card-tag ${rarityClass}">${escapeHtml(RARITY_ZH[safeRarity] || safeRarity)}</span>` : ''}
               </div>
-              <div class="card-sightings">× ${sightings.length} 次目击 · 首次 ${sightings.reduce((m, s) => s.date < m ? s.date : m, sightings[0].date)}</div>
+              <div class="card-sightings">× ${sightings.length} 次目击 · 首次 ${escapeHtml(firstDate)}</div>
             </div>`;
           card.prepend(photoDiv);
 
           const openDetail = () => openDetailPanel(zh);
           card.addEventListener('click', openDetail);
-          card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') openDetail(); });
+          card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(); } });
           grid.appendChild(card);
         }
       }
@@ -800,15 +857,15 @@
         ].filter(([, v]) => v);
 
         document.getElementById('detail-rows').innerHTML = rows.map(([k, v]) =>
-          `<div class="detail-row"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+          `<div class="detail-row"><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('');
 
         const list = document.getElementById('detail-sightings-list');
         const ordered = [...sightings].sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || ''));
         list.innerHTML = `<div class="detail-sightings-label">// 目击记录 · ${sightings.length} 次</div>` +
           ordered.map(s => `
             <div class="sighting-entry">
-              <span>${s.time || ''} ${s.area || ''}</span>
-              <span class="s-date">${s.date}</span>
+              <span>${escapeHtml(s.time || '')} ${escapeHtml(s.area || '')}</span>
+              <span class="s-date">${escapeHtml(s.date)}</span>
             </div>`).join('');
 
         document.getElementById('detail-overlay').classList.add('open');
