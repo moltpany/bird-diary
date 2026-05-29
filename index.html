@@ -32,6 +32,7 @@
         --rare-uncommon: #b07520;
         --rare-rare:     #8b3a8b;
         --rare-very:     #b8392c;
+        --rare-domestic: #7a8499;
       }
       html.dark {
         --ink-bg:        #0e1830;
@@ -352,6 +353,7 @@
       .rarity-uncommon { border-color: var(--rare-uncommon); color: var(--rare-uncommon); }
       .rarity-rare     { border-color: var(--rare-rare);     color: var(--rare-rare); }
       .rarity-very_rare { border-color: var(--rare-very);   color: var(--rare-very); }
+      .rarity-domestic { border-color: var(--rare-domestic); color: var(--rare-domestic); }
 
       .card-sightings {
         font-size: 10px;
@@ -601,8 +603,13 @@
       });
 
       // ─── rarity helpers ───
-      const RARITY_ORDER = ['very_rare', 'rare', 'uncommon', 'common'];
-      const RARITY_ZH = { common: '常见', uncommon: '不常见', rare: '稀有', very_rare: '珍稀' };
+      // order = rarest → least rare; 'domestic'(驯化/家养) is not "rare", it sorts last
+      const RARITY_ORDER = ['very_rare', 'rare', 'uncommon', 'common', 'domestic'];
+      const RARITY_ZH = { common: '常见', uncommon: '不常见', rare: '稀有', very_rare: '珍稀', domestic: '驯化' };
+      // unknown rarities sort to the very end and never count as "rarest"
+      function rarityRank(r) { const i = RARITY_ORDER.indexOf(r); return i === -1 ? 99 : i; }
+      // combined city+district key for the 城市区域 filter
+      function areaKey(s) { return s.city ? s.city + ' · ' + s.area : (s.area || ''); }
 
       // ─── silhouette SVG (generic bird) ───
       const SILHOUETTE_SVG = `<svg viewBox="0 0 100 100" fill="currentColor" class="silhouette">
@@ -641,7 +648,7 @@
           speciesMap[s.species_zh].sightings.push(s);
           // keep the rarest sighting as species representative
           const cur = speciesMap[s.species_zh].species;
-          if (RARITY_ORDER.indexOf(s.rarity) < RARITY_ORDER.indexOf(cur.rarity)) {
+          if (rarityRank(s.rarity) < rarityRank(cur.rarity)) {
             speciesMap[s.species_zh].species = s;
           }
         }
@@ -655,7 +662,8 @@
         let rarest = null;
         for (const zh of species) {
           const s = speciesMap[zh].species;
-          if (!rarest || RARITY_ORDER.indexOf(s.rarity) < RARITY_ORDER.indexOf(rarest.rarity)) rarest = s;
+          if (s.rarity === 'domestic') continue; // 驯化物种不计入"最稀有"
+          if (!rarest || rarityRank(s.rarity) < rarityRank(rarest.rarity)) rarest = s;
         }
         if (rarest) {
           document.getElementById('stat-rarest').textContent = rarest.species_zh;
@@ -666,7 +674,7 @@
       function getFilterValues() {
         const keys = Object.keys(speciesMap);
         if (activeTab === 'family') return [...new Set(keys.map(k => speciesMap[k].species.family).filter(Boolean))].sort();
-        if (activeTab === 'area')   return [...new Set(keys.map(k => speciesMap[k].species.area).filter(Boolean))].sort();
+        if (activeTab === 'area')   return [...new Set(keys.map(k => areaKey(speciesMap[k].species)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh'));
         if (activeTab === 'rarity') return RARITY_ORDER.filter(r => keys.some(k => speciesMap[k].species.rarity === r));
         return [];
       }
@@ -699,7 +707,7 @@
         return keys.filter(k => {
           const s = speciesMap[k].species;
           if (activeTab === 'family') return s.family === activeChip;
-          if (activeTab === 'area')   return s.area === activeChip;
+          if (activeTab === 'area')   return areaKey(s) === activeChip;
           if (activeTab === 'rarity') return s.rarity === activeChip;
           return true;
         });
@@ -720,7 +728,7 @@
 
         // sort: rarity (rarest first), then alphabetical
         filtered.sort((a, b) => {
-          const ri = RARITY_ORDER.indexOf(speciesMap[a].species.rarity) - RARITY_ORDER.indexOf(speciesMap[b].species.rarity);
+          const ri = rarityRank(speciesMap[a].species.rarity) - rarityRank(speciesMap[b].species.rarity);
           return ri !== 0 ? ri : a.localeCompare(b, 'zh');
         });
 
@@ -762,7 +770,7 @@
                 ${species.area ? `<span class="card-tag">${species.area}</span>` : ''}
                 ${species.rarity ? `<span class="card-tag ${rarityClass}">${RARITY_ZH[species.rarity] || species.rarity}</span>` : ''}
               </div>
-              <div class="card-sightings">× ${sightings.length} 次目击 · 首次 ${sightings[sightings.length-1]?.date || '—'}</div>
+              <div class="card-sightings">× ${sightings.length} 次目击 · 首次 ${sightings.reduce((m, s) => s.date < m ? s.date : m, sightings[0].date)}</div>
             </div>`;
           card.prepend(photoDiv);
 
@@ -795,8 +803,9 @@
           `<div class="detail-row"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
 
         const list = document.getElementById('detail-sightings-list');
+        const ordered = [...sightings].sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || ''));
         list.innerHTML = `<div class="detail-sightings-label">// 目击记录 · ${sightings.length} 次</div>` +
-          sightings.map(s => `
+          ordered.map(s => `
             <div class="sighting-entry">
               <span>${s.time || ''} ${s.area || ''}</span>
               <span class="s-date">${s.date}</span>
