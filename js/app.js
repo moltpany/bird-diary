@@ -3,7 +3,7 @@
 const STORAGE_KEY = 'bird-diary-sightings';
 
 let allBirds = [];
-let sightings = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let sightings = loadSightings();
 let currentView = 'guide';
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
@@ -21,6 +21,15 @@ function showError(msg) {
   const el = document.getElementById('error-banner');
   el.textContent = msg;
   el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 6000);
+}
+
+function loadSightings() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch {
+    return [];
+  }
 }
 
 // ─── Boot ───────────────────────────────────────────────────────────────────
@@ -43,11 +52,15 @@ async function init() {
 // ─── Navigation ─────────────────────────────────────────────────────────────
 
 function bindNav() {
-  document.querySelectorAll('nav button').forEach(btn => {
+  document.querySelectorAll('nav [role="tab"]').forEach(btn => {
     btn.addEventListener('click', () => {
       currentView = btn.dataset.view;
-      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('nav [role="tab"]').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
       document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
       document.getElementById(`view-${currentView}`).classList.remove('hidden');
     });
@@ -70,11 +83,9 @@ function renderGuide(filter = '', family = '') {
   });
 
   const countEl = document.getElementById('guide-count');
-  if (filter || family) {
-    countEl.textContent = `${birds.length} result${birds.length !== 1 ? 's' : ''}`;
-  } else {
-    countEl.textContent = `${birds.length} birds`;
-  }
+  countEl.textContent = (filter || family)
+    ? `${birds.length} result${birds.length !== 1 ? 's' : ''}`
+    : `${birds.length} birds`;
 
   if (birds.length === 0) {
     grid.innerHTML = '<p class="diary-empty">No birds match your search. Try a different name or family.</p>';
@@ -82,8 +93,9 @@ function renderGuide(filter = '', family = '') {
   }
 
   grid.innerHTML = birds.map(b => `
-    <div class="bird-card" data-id="${b.id}">
-      <span class="size-tag">${b.size}</span>
+    <div class="bird-card" data-id="${b.id}" tabindex="0" role="button"
+         aria-label="${escapeHtml(b.commonName)}, ${escapeHtml(b.family)}">
+      <span class="size-tag" aria-hidden="true">${b.size}</span>
       <h3>${b.commonName}</h3>
       <div class="sci">${b.scientificName}</div>
       <span class="family-badge">${b.family}</span>
@@ -92,7 +104,11 @@ function renderGuide(filter = '', family = '') {
   `).join('');
 
   grid.querySelectorAll('.bird-card').forEach(card => {
-    card.addEventListener('click', () => showBirdDetail(parseInt(card.dataset.id)));
+    const open = () => showBirdDetail(parseInt(card.dataset.id));
+    card.addEventListener('click', open);
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+    });
   });
 }
 
@@ -120,6 +136,7 @@ function showBirdDetail(id) {
   `;
   panel.classList.remove('hidden');
   document.getElementById('bird-grid').classList.add('hidden');
+  document.getElementById('back-btn').focus();
 
   document.getElementById('back-btn').addEventListener('click', () => {
     panel.classList.add('hidden');
@@ -153,18 +170,67 @@ function renderDiary() {
   const sorted = [...sightings].sort((a, b) => new Date(b.date) - new Date(a.date));
   list.innerHTML = sorted.map(s => `
     <div class="sighting-card" data-sid="${escapeHtml(s.id)}">
-      <div>
+      <div class="sighting-body">
         <h4>${escapeHtml(s.birdName)}</h4>
         <div class="meta">${formatDate(s.date)}${s.location ? ' · ' + escapeHtml(s.location) : ''}</div>
         ${s.notes ? `<div class="notes">"${escapeHtml(s.notes)}"</div>` : ''}
       </div>
-      <button class="del-btn" title="Delete sighting" data-sid="${escapeHtml(s.id)}">✕</button>
+      <div class="sighting-actions">
+        <button class="edit-btn" title="Edit" aria-label="Edit sighting of ${escapeHtml(s.birdName)}" data-sid="${escapeHtml(s.id)}">✎</button>
+        <button class="del-btn" title="Delete" aria-label="Delete sighting of ${escapeHtml(s.birdName)}" data-sid="${escapeHtml(s.id)}">✕</button>
+      </div>
     </div>
   `).join('');
 
+  list.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => editSighting(btn.dataset.sid));
+  });
   list.querySelectorAll('.del-btn').forEach(btn => {
     btn.addEventListener('click', () => deleteSighting(btn.dataset.sid));
   });
+}
+
+function editSighting(id) {
+  const entry = sightings.find(s => s.id === id);
+  if (!entry) return;
+  const card = document.querySelector(`.sighting-card[data-sid="${CSS.escape(id)}"]`);
+  if (!card) return;
+
+  card.innerHTML = `
+    <div class="edit-form">
+      <div class="edit-row">
+        <select class="edit-bird" aria-label="Bird species">
+          ${allBirds.map(b =>
+            `<option value="${escapeHtml(b.commonName)}"${b.commonName === entry.birdName ? ' selected' : ''}>${escapeHtml(b.commonName)}</option>`
+          ).join('')}
+        </select>
+        <input type="date" class="edit-date" value="${escapeHtml(entry.date)}" aria-label="Date" />
+      </div>
+      <input type="text" class="edit-location" value="${escapeHtml(entry.location || '')}" placeholder="Location (optional)" aria-label="Location" />
+      <textarea class="edit-notes" placeholder="Notes (optional)" aria-label="Notes">${escapeHtml(entry.notes || '')}</textarea>
+      <div class="edit-actions">
+        <button class="submit-btn edit-save">Save</button>
+        <button class="back-btn edit-cancel">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  card.querySelector('.edit-save').addEventListener('click', () => {
+    const birdName = card.querySelector('.edit-bird').value;
+    const date = card.querySelector('.edit-date').value;
+    const location = card.querySelector('.edit-location').value.trim();
+    const notes = card.querySelector('.edit-notes').value.trim();
+    if (!birdName || !date) return;
+    const idx = sightings.findIndex(s => s.id === id);
+    if (idx === -1) return;
+    sightings[idx] = { ...sightings[idx], birdName, date, location, notes };
+    saveSightings();
+    renderDiary();
+    updateStats();
+  });
+
+  card.querySelector('.edit-cancel').addEventListener('click', renderDiary);
+  card.querySelector('.edit-bird').focus();
 }
 
 function deleteSighting(id) {
@@ -178,7 +244,11 @@ function deleteSighting(id) {
 }
 
 function saveSightings() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sightings));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sightings));
+  } catch {
+    showError('Could not save — storage may be full. Export your data as a backup.');
+  }
 }
 
 function formatDate(iso) {
@@ -188,8 +258,13 @@ function formatDate(iso) {
 }
 
 function switchToDiaryLog(bird) {
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  document.querySelector('[data-view="diary"]').classList.add('active');
+  document.querySelectorAll('nav [role="tab"]').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
+  const diaryBtn = document.querySelector('[data-view="diary"]');
+  diaryBtn.classList.add('active');
+  diaryBtn.setAttribute('aria-selected', 'true');
   document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
   document.getElementById('view-diary').classList.remove('hidden');
   currentView = 'diary';
@@ -198,6 +273,48 @@ function switchToDiaryLog(bird) {
   sel.value = bird.commonName;
   document.getElementById('log-date').valueAsDate = new Date();
   document.getElementById('log-location').focus();
+}
+
+// ─── Export / Import ─────────────────────────────────────────────────────────
+
+function exportSightings() {
+  const blob = new Blob([JSON.stringify(sightings, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bird-diary-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function bindImport() {
+  document.getElementById('export-btn').addEventListener('click', exportSightings);
+
+  const fileInput = document.getElementById('import-file');
+  document.getElementById('import-btn').addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (!Array.isArray(imported)) throw new Error('Expected an array');
+        const existingIds = new Set(sightings.map(s => s.id));
+        const newEntries = imported.filter(s => s.id && s.birdName && s.date && !existingIds.has(s.id));
+        sightings = [...sightings, ...newEntries];
+        saveSightings();
+        renderDiary();
+        updateStats();
+        alert(`Imported ${newEntries.length} new sighting(s). ${imported.length - newEntries.length} skipped (duplicates or invalid).`);
+      } catch {
+        showError('Import failed: file is not a valid Bird Diary backup.');
+      }
+    };
+    reader.readAsText(file);
+    fileInput.value = '';
+  });
 }
 
 // ─── Log Form ────────────────────────────────────────────────────────────────
@@ -294,5 +411,6 @@ window.addEventListener('DOMContentLoaded', () => {
     populateFamilyFilter();
     bindGuideControls();
     bindLogForm();
+    bindImport();
   });
 });

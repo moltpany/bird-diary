@@ -1,5 +1,11 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+:focus-visible {
+  outline: 2px solid var(--green-light);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 :root {
   --green: #2d6a4f;
   --green-light: #52b788;
@@ -157,6 +163,27 @@ main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
 }
 .log-btn:hover { background: var(--green-dark); }
 
+/* Diary toolbar */
+.diary-toolbar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.diary-toolbar-label { font-size: .8rem; color: var(--muted); }
+.toolbar-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: .3rem .75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .8rem;
+  transition: border-color .15s, color .15s;
+}
+.toolbar-btn:hover { border-color: var(--green-light); color: var(--green); }
+
 /* Diary section */
 .diary-empty { text-align: center; color: var(--muted); padding: 2rem 0; font-size: .95rem; }
 .sighting-list { display: flex; flex-direction: column; gap: .75rem; }
@@ -169,11 +196,44 @@ main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: .5rem;
 }
+.sighting-body { flex: 1; min-width: 0; }
 .sighting-card h4 { color: var(--green); font-size: .95rem; }
 .sighting-card .meta { font-size: .8rem; color: var(--muted); margin-top: .15rem; }
-.sighting-card .notes { font-size: .85rem; margin-top: .4rem; font-style: italic; color: #444; }
-.del-btn { background: none; border: none; cursor: pointer; color: #c0392b; font-size: 1.1rem; padding: 0 .25rem; }
+.sighting-card .notes { font-size: .85rem; margin-top: .4rem; font-style: italic; color: var(--muted); }
+.sighting-actions { display: flex; gap: .1rem; align-items: flex-start; flex-shrink: 0; }
+.edit-btn { background: none; border: none; cursor: pointer; color: var(--green); font-size: 1rem; padding: .1rem .3rem; transition: color .15s; }
+.edit-btn:hover { color: var(--green-dark); }
+.del-btn { background: none; border: none; cursor: pointer; color: #c0392b; font-size: 1.1rem; padding: .1rem .25rem; }
+
+/* Inline edit form */
+.edit-form { width: 100%; }
+.edit-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.edit-form select,
+.edit-form input[type="date"],
+.edit-form input[type="text"],
+.edit-form textarea {
+  padding: .45rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: .85rem;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color .15s;
+}
+.edit-form select,
+.edit-form input[type="text"] { width: 100%; }
+.edit-row select,
+.edit-row input[type="date"] { flex: 1 1 120px; width: auto; }
+.edit-form input[type="text"],
+.edit-form textarea { margin-top: .4rem; }
+.edit-form select:focus,
+.edit-form input:focus,
+.edit-form textarea:focus { border-color: var(--green-light); }
+.edit-form textarea { width: 100%; min-height: 60px; resize: vertical; }
+.edit-actions { display: flex; gap: .5rem; margin-top: .6rem; }
 
 /* Log form */
 .log-form {
@@ -280,4 +340,18 @@ main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
   .top-species-row { grid-template-columns: 1.5rem 1fr auto; }
   .top-bar-wrap { display: none; }
   header h1 { font-size: 1.2rem; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #c8e6c9;
+    --muted: #7dab85;
+    --bg: #0e1a12;
+    --card-bg: #172214;
+    --border: #2a3d2e;
+    --green-pale: #1a3020;
+    --shadow: 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  .sighting-card .notes { color: #9abfa0; }
 }

@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Bird Diary — a browser-based field guide and personal sighting diary for birdwatchers. No account required." />
   <title>Bird Diary — Field Guide</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐦</text></svg>" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -11,36 +13,43 @@
 <div id="error-banner" class="error-banner hidden"></div>
 
 <header>
-  <span style="font-size:1.8rem">🐦</span>
+  <span style="font-size:1.8rem" aria-hidden="true">🐦</span>
   <div>
     <h1>Bird Diary</h1>
     <div class="subtitle">Field Guide &amp; Sighting Diary</div>
   </div>
 </header>
 
-<nav>
-  <button class="active" data-view="guide">Field Guide</button>
-  <button data-view="diary">My Diary</button>
-  <button data-view="stats">Stats</button>
+<nav role="tablist" aria-label="Main navigation">
+  <button id="tab-guide" role="tab" class="active" aria-selected="true" data-view="guide">Field Guide</button>
+  <button id="tab-diary" role="tab" aria-selected="false" data-view="diary">My Diary</button>
+  <button id="tab-stats" role="tab" aria-selected="false" data-view="stats">Stats</button>
 </nav>
 
 <main>
 
   <!-- ── Field Guide ── -->
-  <section id="view-guide">
+  <section id="view-guide" role="tabpanel" aria-labelledby="tab-guide">
     <div class="controls">
-      <input id="bird-search" type="search" placeholder="Search birds…" />
-      <select id="family-filter">
+      <input id="bird-search" type="search" placeholder="Search birds…" aria-label="Search birds by name" />
+      <select id="family-filter" aria-label="Filter by family">
         <option value="">All families</option>
       </select>
-      <span id="guide-count" class="guide-count"></span>
+      <span id="guide-count" class="guide-count" aria-live="polite"></span>
     </div>
     <div id="bird-detail" class="detail-panel hidden"></div>
     <div id="bird-grid" class="bird-grid"></div>
   </section>
 
   <!-- ── Diary ── -->
-  <section id="view-diary" class="hidden">
+  <section id="view-diary" role="tabpanel" aria-labelledby="tab-diary" class="hidden">
+
+    <div class="diary-toolbar">
+      <span class="diary-toolbar-label">Backup:</span>
+      <button id="export-btn" class="toolbar-btn">↓ Export JSON</button>
+      <button id="import-btn" class="toolbar-btn">↑ Import JSON</button>
+      <input type="file" id="import-file" accept=".json" hidden aria-label="Import sightings from JSON file" />
+    </div>
 
     <div class="log-form">
       <h3>Log a Sighting</h3>
@@ -70,7 +79,7 @@
           </label>
         </div>
         <button type="submit" class="submit-btn">Save Sighting</button>
-        <span id="log-success" style="margin-left:.75rem;color:var(--green);font-size:.9rem"></span>
+        <span id="log-success" aria-live="polite" style="margin-left:.75rem;color:var(--green);font-size:.9rem"></span>
       </form>
     </div>
 
@@ -78,7 +87,7 @@
   </section>
 
   <!-- ── Stats ── -->
-  <section id="view-stats" class="hidden">
+  <section id="view-stats" role="tabpanel" aria-labelledby="tab-stats" class="hidden">
     <div class="stats-bar">
       <div class="stat-box">
         <div class="num" id="stat-total">0</div>
