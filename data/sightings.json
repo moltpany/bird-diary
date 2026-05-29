@@ -266,6 +266,20 @@
     "lifer": true
   },
   {
+    "id": "2026-05-20_夜鹭_001",
+    "date": "2026-05-20",
+    "time": "14:00",
+    "species_zh": "夜鹭",
+    "species_en": "Black-crowned Night Heron",
+    "species_sci": "Nycticorax nycticorax",
+    "family": "鹭科",
+    "area": "拱墅区",
+    "city": "杭州",
+    "rarity": "common",
+    "thumb": "thumbs/2026-05-20_夜鹭_1.jpg",
+    "lifer": true
+  },
+  {
     "id": "2026-05-29_珠颈斑鸠_001",
     "date": "2026-05-29",
     "time": "00:30",
