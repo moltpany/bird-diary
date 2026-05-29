@@ -320,5 +320,33 @@
     "rarity": "rare",
     "thumb": "thumbs/2026-05-29_鸿雁_1.jpg",
     "lifer": true
+  },
+  {
+    "id": "2026-05-29_家鹅_001",
+    "date": "2026-05-29",
+    "time": "11:50",
+    "species_zh": "家鹅",
+    "species_en": "Domestic Goose",
+    "species_sci": "Anser cygnoides (domestic)",
+    "family": "鸭科",
+    "area": "鄞州区",
+    "city": "宁波",
+    "rarity": "domestic",
+    "thumb": "thumbs/2026-05-29_家鹅_1.jpg",
+    "lifer": false
+  },
+  {
+    "id": "2026-05-29_凤头鸭_001",
+    "date": "2026-05-29",
+    "time": "11:52",
+    "species_zh": "凤头鸭",
+    "species_en": "Crested Duck",
+    "species_sci": "Anas platyrhynchos (domestic)",
+    "family": "鸭科",
+    "area": "鄞州区",
+    "city": "宁波",
+    "rarity": "domestic",
+    "thumb": "thumbs/2026-05-29_凤头鸭_1.jpg",
+    "lifer": false
   }
 ]
