@@ -292,5 +292,19 @@
     "rarity": "common",
     "thumb": "thumbs/2026-05-29_珠颈斑鸠_1.jpg",
     "lifer": true
+  },
+  {
+    "id": "2026-05-29_红头长尾山雀_001",
+    "date": "2026-05-29",
+    "time": "11:24",
+    "species_zh": "红头长尾山雀",
+    "species_en": "Black-throated Bushtit",
+    "species_sci": "Aegithalos concinnus",
+    "family": "长尾山雀科",
+    "area": "鄞州区",
+    "city": "宁波",
+    "rarity": "common",
+    "thumb": "thumbs/2026-05-29_红头长尾山雀_1.jpg",
+    "lifer": true
   }
 ]
