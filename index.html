@@ -800,6 +800,29 @@
         }
       }
 
+      // combined English city·district key for area filter
+      function areaKeyEn(s) {
+        const c = s.city_en || s.city || '';
+        const a = s.area_en || s.area || '';
+        return c ? c + ' · ' + a : a;
+      }
+
+      // display label for a filter chip given its internal (Chinese) key
+      function chipLabel(tab, internalKey) {
+        if (tab === 'rarity') return rarityLabel(internalKey);
+        if (lang === 'en') {
+          if (tab === 'family') {
+            const s = allSightings.find(s => s.family === internalKey);
+            return (s && s.family_en) || internalKey;
+          }
+          if (tab === 'area') {
+            const s = allSightings.find(s => areaKey(s) === internalKey);
+            return s ? areaKeyEn(s) : internalKey;
+          }
+        }
+        return internalKey;
+      }
+
       function getFilterValues() {
         const keys = Object.keys(speciesMap);
         if (activeTab === 'family') return [...new Set(keys.map(k => speciesMap[k].species.family).filter(Boolean))].sort();
@@ -824,7 +847,7 @@
         for (const v of values) {
           const chip = document.createElement('button');
           chip.className = 'chip' + (activeChip === v ? ' active' : '');
-          chip.textContent = activeTab === 'rarity' ? rarityLabel(v) : v;
+          chip.textContent = chipLabel(activeTab, v);
           chip.addEventListener('click', () => { activeChip = v; renderSubFilters(); renderGrid(); });
           container.appendChild(chip);
         }
@@ -901,13 +924,15 @@
           const safeRarity = /^[a-z_]+$/.test(species.rarity || '') ? species.rarity : 'common';
           const rarityClass = 'rarity-' + safeRarity;
           const firstDate = sightings.reduce((m, s) => s.date < m ? s.date : m, sightings[0].date);
+          const familyDisp = lang === 'en' ? (species.family_en || species.family) : species.family;
+          const areaDisp   = lang === 'en' ? (species.area_en   || species.area)   : species.area;
           card.innerHTML = `
             <div class="card-body">
               <span class="card-zh">${escapeHtml(speciesPrimary(species))}</span>
               <span class="card-en">${escapeHtml(speciesSecondary(species))}</span>
               <div class="card-meta">
-                ${species.family ? `<span class="card-tag">${escapeHtml(species.family)}</span>` : ''}
-                ${species.area ? `<span class="card-tag">${escapeHtml(species.area)}</span>` : ''}
+                ${familyDisp ? `<span class="card-tag">${escapeHtml(familyDisp)}</span>` : ''}
+                ${areaDisp   ? `<span class="card-tag">${escapeHtml(areaDisp)}</span>`   : ''}
                 ${safeRarity ? `<span class="card-tag ${rarityClass}">${escapeHtml(rarityLabel(safeRarity))}</span>` : ''}
               </div>
               <div class="card-sightings">${escapeHtml(t().cardSightings(sightings.length, firstDate))}</div>
@@ -932,15 +957,17 @@
         else { photo.style.display = 'none'; }
 
         const dict = t();
-        // show the "other" name as a row: in zh mode → English name; in en mode → Chinese name
         const otherName = lang === 'zh'
           ? [dict.rowEn, species.species_en]
           : [dict.rowZh, species.species_zh];
+        const familyDisp = lang === 'en' ? (species.family_en || species.family) : species.family;
+        const areaDisp   = lang === 'en' ? (species.area_en   || species.area)   : species.area;
+        const cityDisp   = lang === 'en' ? (species.city_en   || species.city)   : species.city;
         const rows = [
           otherName,
-          [dict.rowFamily, species.family],
-          [dict.rowArea, species.area],
-          [dict.rowCity, species.city],
+          [dict.rowFamily, familyDisp],
+          [dict.rowArea,   areaDisp],
+          [dict.rowCity,   cityDisp],
           [dict.rowRarity, rarityLabel(species.rarity)],
         ].filter(([, v]) => v);
 
@@ -950,11 +977,14 @@
         const list = document.getElementById('detail-sightings-list');
         const ordered = [...sightings].sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || ''));
         list.innerHTML = `<div class="detail-sightings-label">${escapeHtml(dict.detailSightings(sightings.length))}</div>` +
-          ordered.map(s => `
+          ordered.map(s => {
+            const sArea = lang === 'en' ? (s.area_en || s.area || '') : (s.area || '');
+            return `
             <div class="sighting-entry">
-              <span>${escapeHtml(s.time || '')} ${escapeHtml(s.area || '')}</span>
+              <span>${escapeHtml(s.time || '')} ${escapeHtml(sArea)}</span>
               <span class="s-date">${escapeHtml(s.date)}</span>
-            </div>`).join('');
+            </div>`;
+          }).join('');
 
         document.getElementById('detail-overlay').classList.add('open');
         document.getElementById('detail-close-btn').focus();
