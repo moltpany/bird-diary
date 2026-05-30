@@ -392,7 +392,11 @@
         margin-top: auto;
         padding-top: 8px;
         border-top: 1px dashed var(--rule-soft);
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
+      .card-sightings .cs-text { flex: 1; min-width: 0; }
 
       /* ─── empty state ─── */
       .empty-state {
@@ -590,26 +594,24 @@
       }
       .card-tag.tag-friend { border-color: var(--bread); color: var(--bread); }
 
-      /* flip affordance (touch-friendly) */
-      .card-flip-btn {
-        position: absolute;
-        top: 8px; left: 8px;
-        z-index: 2;
-        width: 27px; height: 27px;
-        border-radius: 50%;
-        border: 1px solid var(--rule-soft);
-        background: rgba(255,255,255,0.86);
-        color: var(--royal);
-        font-size: 13px; line-height: 1;
+      /* flip affordance — subtle map icon in the footer (touch-friendly) */
+      .card-map-toggle {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px; height: 22px;
+        border: none;
+        background: transparent;
+        color: var(--ink-faint);
         cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
         padding: 0;
-        transition: border-color 0.15s, background 0.15s;
-        -webkit-backface-visibility: hidden; backface-visibility: hidden;
+        margin: -2px -2px -2px 0;
+        transition: color 0.15s;
       }
-      html.dark .card-flip-btn { background: rgba(20,33,66,0.86); }
-      .card-flip-btn:hover { border-color: var(--royal); }
-      .friend-card .card-flip-btn { color: var(--bread); }
+      .card-map-toggle svg { width: 14px; height: 14px; display: block; }
+      .card-map-toggle:hover { color: var(--royal); }
+      .friend-card .card-map-toggle:hover { color: var(--bread); }
       .flip-back-btn {
         margin-left: auto;
         border: 1px solid var(--rule-soft);
@@ -1018,6 +1020,9 @@
           </div>`;
       }
 
+      // ─── folded-map icon (flip affordance) ───
+      const MAP_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 6.5l6-2 6 2 6-2v13l-6 2-6-2-6 2z"/><path d="M9 4.5v13M15 6.5v13"/></svg>`;
+
       // ─── silhouette SVG (generic bird) ───
       const SILHOUETTE_SVG = `<svg viewBox="0 0 100 100" fill="currentColor" class="silhouette">
         <ellipse cx="50" cy="55" rx="22" ry="15"/>
@@ -1222,14 +1227,6 @@
           badge.textContent = 'LIFER';
           photoDiv.appendChild(badge);
         }
-        // touch-friendly flip toggle
-        const flipBtn = document.createElement('button');
-        flipBtn.className = 'card-flip-btn';
-        flipBtn.type = 'button';
-        flipBtn.textContent = '🗺';
-        flipBtn.setAttribute('aria-label', t().flipToMap);
-        flipBtn.addEventListener('click', e => { e.stopPropagation(); card.classList.toggle('flipped'); });
-        photoDiv.appendChild(flipBtn);
         front.appendChild(photoDiv);
 
         const firstDate = sightings.reduce((m, s) => s.date < m ? s.date : m, sightings[0].date);
@@ -1254,8 +1251,15 @@
             ${areaDisp   ? `<span class="card-tag">${escapeHtml(areaDisp)}</span>`   : ''}
             ${tagHtml}
           </div>
-          <div class="card-sightings">${escapeHtml(t().cardSightings(sightings.length, firstDate))}</div>`;
+          <div class="card-sightings">
+            <span class="cs-text">${escapeHtml(t().cardSightings(sightings.length, firstDate))}</span>
+            <button class="card-map-toggle" type="button" aria-label="${escapeHtml(t().flipToMap)}" title="${escapeHtml(t().flipToMap)}">${MAP_ICON_SVG}</button>
+          </div>`;
         front.appendChild(body);
+
+        // touch-friendly flip toggle (footer map icon)
+        const mapToggle = body.querySelector('.card-map-toggle');
+        mapToggle.addEventListener('click', e => { e.stopPropagation(); card.classList.toggle('flipped'); });
 
         // ── BACK (distribution map) ──
         const back = document.createElement('div');
