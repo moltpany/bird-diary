@@ -269,7 +269,15 @@
         transform-style: preserve-3d;
         transition: transform 0.52s ease, box-shadow 0.2s;
       }
-      .bird-card:hover:not(.locked) .card-inner {
+      /* hover-flip only on real pointer devices; touch uses the map button */
+      @media (hover: hover) {
+        .bird-card:hover:not(.locked) .card-inner {
+          transform: rotateY(180deg);
+          box-shadow: 0 14px 36px -16px rgba(18,39,102,0.38);
+        }
+      }
+      /* explicit toggle — works on touch and desktop */
+      .bird-card.flipped:not(.locked) .card-inner {
         transform: rotateY(180deg);
         box-shadow: 0 14px 36px -16px rgba(18,39,102,0.38);
       }
@@ -572,10 +580,49 @@
       }
       .friend-card .card-front { border-color: var(--bread-soft); }
       .friend-card .card-back  { border-color: var(--bread-soft); }
-      .bird-card.friend-card:hover:not(.locked) .card-inner {
+      @media (hover: hover) {
+        .bird-card.friend-card:hover:not(.locked) .card-inner {
+          box-shadow: 0 14px 36px -16px rgba(176,117,32,0.38);
+        }
+      }
+      .bird-card.friend-card.flipped:not(.locked) .card-inner {
         box-shadow: 0 14px 36px -16px rgba(176,117,32,0.38);
       }
       .card-tag.tag-friend { border-color: var(--bread); color: var(--bread); }
+
+      /* flip affordance (touch-friendly) */
+      .card-flip-btn {
+        position: absolute;
+        top: 8px; left: 8px;
+        z-index: 2;
+        width: 27px; height: 27px;
+        border-radius: 50%;
+        border: 1px solid var(--rule-soft);
+        background: rgba(255,255,255,0.86);
+        color: var(--royal);
+        font-size: 13px; line-height: 1;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0;
+        transition: border-color 0.15s, background 0.15s;
+        -webkit-backface-visibility: hidden; backface-visibility: hidden;
+      }
+      html.dark .card-flip-btn { background: rgba(20,33,66,0.86); }
+      .card-flip-btn:hover { border-color: var(--royal); }
+      .friend-card .card-flip-btn { color: var(--bread); }
+      .flip-back-btn {
+        margin-left: auto;
+        border: 1px solid var(--rule-soft);
+        background: transparent;
+        color: var(--ink-secondary);
+        font-family: inherit;
+        font-size: 8px; letter-spacing: 0.14em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s;
+      }
+      .flip-back-btn:hover { border-color: var(--royal); color: var(--royal); }
 
       /* ─── card back: distribution map ─── */
       .map-back-title {
@@ -586,6 +633,9 @@
         padding: 7px 10px 5px;
         border-bottom: 1px solid var(--rule-soft);
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
       }
       .map-back-svg { flex: 1; width: 100%; display: block; min-height: 0; }
       .map-legend {
@@ -602,6 +652,19 @@
       .map-legend i { width: 8px; height: 8px; display: inline-block; border-radius: 2px; }
       .map-legend .lg-range { background: var(--royal); opacity: 0.5; }
       .map-legend .lg-spot { background: var(--stamp-red); border-radius: 50%; }
+
+      /* distribution map inside the detail panel */
+      .detail-map {
+        display: flex;
+        flex-direction: column;
+        height: 320px;
+        border: 1px solid var(--rule-soft);
+        background: var(--paper-tab);
+        margin: 4px 0 26px;
+      }
+      .detail-map .map-back-title { font-size: 9px; padding: 8px 12px 6px; }
+      .detail-map .map-legend { font-size: 9px; padding: 6px 12px 8px; }
+      .detail-map .map-legend i { width: 9px; height: 9px; }
 
       /* ─── mind map section ─── */
       .mindmap-section { margin-top: 32px; }
@@ -704,6 +767,7 @@
           <h2 class="detail-zh" id="detail-zh"></h2>
           <p class="detail-sci" id="detail-sci"></p>
           <dl class="detail-rows" id="detail-rows"></dl>
+          <div class="detail-map" id="detail-map" hidden></div>
           <div class="detail-sightings-list" id="detail-sightings-list"></div>
         </div>
       </aside>
@@ -741,6 +805,7 @@
           mindmapHint: '点击物种节点查看详细档案',
           mapRange: '// 分布范围',
           legendRange: '分布', legendSpot: '我拍到的',
+          flipToMap: '查看分布图', flipBack: '返回',
           chipAll: '全部',
           detailLabel: '// 物种档案', detailClose: '关闭 ×',
           rowEn: '英文名', rowZh: '中文名', rowFamily: '科', rowArea: '地区', rowCity: '城市', rowRarity: '稀有度',
@@ -768,6 +833,7 @@
           mindmapHint: 'Click a species node to open its profile',
           mapRange: '// range',
           legendRange: 'range', legendSpot: 'my photo',
+          flipToMap: 'View range map', flipBack: 'back',
           chipAll: 'All',
           detailLabel: '// species profile', detailClose: 'close ×',
           rowEn: 'English', rowZh: 'Chinese', rowFamily: 'Family', rowArea: 'District', rowCity: 'City', rowRarity: 'Rarity',
@@ -877,8 +943,10 @@
       }
 
       // build the flip-side distribution map for one species
-      function buildMapSvg(sightings, isFriend, speciesName) {
+      // flipBack=true adds a "返回/back" button in the title bar (used on card backs)
+      function buildMapSvg(sightings, isFriend, speciesName, flipBack) {
         const mapTitle = escapeHtml(t().mapRange);
+        const backBtn = flipBack ? `<button class="flip-back-btn" type="button">${escapeHtml(t().flipBack)}</button>` : '';
 
         // group photographed cities by country
         const byCountry = {};
@@ -895,7 +963,7 @@
 
         if (!GEO || !countries.length) {
           const locs = [...new Set(sightings.map(s => lang === 'en' ? (s.city_en || s.city) : s.city).filter(Boolean))].join(' · ');
-          return `<div class="map-back-title">${mapTitle}</div>
+          return `<div class="map-back-title"><span>${mapTitle}</span>${backBtn}</div>
             <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:14px;text-align:center;font-size:11px;color:var(--ink-secondary);letter-spacing:0.06em;">${escapeHtml(locs || '—')}</div>`;
         }
 
@@ -940,7 +1008,7 @@
         }
 
         const cName = country === 'China' ? (lang === 'zh' ? '中国' : 'China') : (lang === 'zh' ? '英国' : 'UK');
-        return `<div class="map-back-title">${mapTitle} · ${escapeHtml(cName)}</div>
+        return `<div class="map-back-title"><span>${mapTitle} · ${escapeHtml(cName)}</span>${backBtn}</div>
           <svg class="map-back-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             ${base}${pins}${labels}
           </svg>
@@ -1154,6 +1222,14 @@
           badge.textContent = 'LIFER';
           photoDiv.appendChild(badge);
         }
+        // touch-friendly flip toggle
+        const flipBtn = document.createElement('button');
+        flipBtn.className = 'card-flip-btn';
+        flipBtn.type = 'button';
+        flipBtn.textContent = '🗺';
+        flipBtn.setAttribute('aria-label', t().flipToMap);
+        flipBtn.addEventListener('click', e => { e.stopPropagation(); card.classList.toggle('flipped'); });
+        photoDiv.appendChild(flipBtn);
         front.appendChild(photoDiv);
 
         const firstDate = sightings.reduce((m, s) => s.date < m ? s.date : m, sightings[0].date);
@@ -1184,7 +1260,9 @@
         // ── BACK (distribution map) ──
         const back = document.createElement('div');
         back.className = 'card-back';
-        back.innerHTML = buildMapSvg(sightings, isFriend, name);
+        back.innerHTML = buildMapSvg(sightings, isFriend, name, true);
+        const backBtn = back.querySelector('.flip-back-btn');
+        if (backBtn) backBtn.addEventListener('click', e => { e.stopPropagation(); card.classList.remove('flipped'); });
 
         inner.appendChild(front);
         inner.appendChild(back);
@@ -1244,6 +1322,12 @@
 
         document.getElementById('detail-rows').innerHTML = rows.map(([k, v]) =>
           `<div class="detail-row"><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('');
+
+        // distribution map (hidden if there's nothing mappable)
+        const mapBox = document.getElementById('detail-map');
+        const mappable = sightings.some(s => CITY_COORDS_MAP[s.city || '']);
+        if (mappable) { mapBox.hidden = false; mapBox.innerHTML = buildMapSvg(sightings, isFriend, name, false); }
+        else { mapBox.hidden = true; mapBox.innerHTML = ''; }
 
         const list = document.getElementById('detail-sightings-list');
         const ordered = [...sightings].sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || ''));
