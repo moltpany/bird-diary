@@ -57,6 +57,38 @@ Each object in `data/sightings.json`:
 | Field | Type | Description |
 |---|---|---|
 | `time` | string | Local time `HH:MM` |
+| `kind` | string | `bird` (default) or `friend`. See "Birds' friends" below. |
+
+### Birds' friends · 鸟儿的朋友
+Non-bird creatures the user photographs along the way (squirrels, butterflies,
+dragonflies, etc.) can be recorded too — set `"kind": "friend"`. These entries:
+- appear in a separate **"鸟儿的朋友 / birds' friends"** section below the main
+  grid, so they never crowd out the birds;
+- are **excluded** from the species/sightings/rarest statistics and from the
+  family / region / rarity filters (those dimensions are bird-only);
+- still use `species_zh` / `species_en` / `species_sci`, and may set `family` /
+  `family_en` (e.g. 松鼠科 / Squirrels), `area`, `city`, `thumb`, `lifer`.
+- `rarity` is ignored for friends (omit it).
+
+Example friend entry:
+```json
+{
+  "id": "2026-06-01_赤腹松鼠_001",
+  "date": "2026-06-01",
+  "species_zh": "赤腹松鼠",
+  "species_en": "Pallas's Squirrel",
+  "species_sci": "Callosciurus erythraeus",
+  "family": "松鼠科",
+  "family_en": "Squirrels",
+  "area": "鄞州区",
+  "area_en": "Yinzhou District",
+  "city": "宁波",
+  "city_en": "Ningbo",
+  "kind": "friend",
+  "thumb": "thumbs/2026-06-01_赤腹松鼠_1.jpg",
+  "lifer": true
+}
+```
 
 ### Valid values for `rarity`
 `common` | `uncommon` | `rare` | `very_rare` | `domestic`

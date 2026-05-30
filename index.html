@@ -533,6 +533,23 @@
         text-transform: uppercase;
         min-height: 1.5em;
       }
+
+      /* birds' friends — non-bird companions, kept visually subordinate */
+      .friends-section {
+        margin-top: 64px;
+        padding-top: 28px;
+        border-top: 1px solid var(--rule-soft);
+      }
+      .friends-section .filter-label { margin-bottom: 6px; }
+      .friends-desc {
+        font-size: 11px;
+        color: var(--ink-faint);
+        margin: 0 0 22px;
+        letter-spacing: 0.04em;
+      }
+      .friend-card { border-color: var(--bread-soft); }
+      .friend-card:hover { box-shadow: 0 12px 32px -16px rgba(176,117,32,0.4); }
+      .card-tag.tag-friend { border-color: var(--bread); color: var(--bread); }
     </style>
   </head>
   <body>
@@ -598,6 +615,13 @@
       <p class="filter-count" id="filter-count" aria-live="polite"></p>
       <main class="bird-grid" id="bird-grid" aria-label="Bird field guide"></main>
 
+      <!-- ─── BIRDS' FRIENDS ─── -->
+      <section class="friends-section" id="friends-section" hidden aria-label="Birds' friends">
+        <p class="filter-label" data-i18n="friendsTitle">// 鸟儿的朋友 · birds' friends</p>
+        <p class="friends-desc" id="friends-desc" data-i18n="friendsDesc"></p>
+        <div class="bird-grid" id="friends-grid"></div>
+      </section>
+
     </div>
 
     <!-- ─── DETAIL PANEL ─── -->
@@ -654,6 +678,9 @@
           cardSightings: (n, d) => `× ${n} 次目击 · 首次 ${d}`,
           detailSightings: n => `// 目击记录 · ${n} 次`,
           loadError: m => `// 数据加载失败 · ${m} · 请刷新重试`,
+          friendsTitle: "// 鸟儿的朋友 · birds' friends",
+          friendsDesc: '路上遇见的非鸟类小伙伴 — 松鼠、蝴蝶、蜻蜓……',
+          friendTag: '朋友',
         },
         en: {
           docTitle: 'Bird Diary · 鸟类图鉴',
@@ -674,6 +701,9 @@
           cardSightings: (n, d) => `× ${n} sighting${n !== 1 ? 's' : ''} · first ${d}`,
           detailSightings: n => `// sighting log · ${n}×`,
           loadError: m => `// failed to load data · ${m} · please refresh`,
+          friendsTitle: "// birds' friends · 鸟儿的朋友",
+          friendsDesc: 'The non-bird companions met along the way — squirrels, butterflies, dragonflies…',
+          friendTag: 'friend',
         },
       };
       const RARITY_EN = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', very_rare: 'Very Rare', domestic: 'Domestic' };
@@ -707,6 +737,7 @@
           renderStats();
           renderSubFilters();
           renderGrid();
+          renderFriends();
         }
       }
 
@@ -749,7 +780,10 @@
 
       // ─── data & state ───
       let allSightings = [];
-      let speciesMap = {};   // species_zh → { species, sightings[] }
+      let birdSightings = [];    // kind !== 'friend'
+      let friendSightings = [];  // kind === 'friend'
+      let speciesMap = {};   // species_zh → { species, sightings[] } — birds only
+      let friendsMap = {};   // species_zh → { species, sightings[] } — friends only
       let activeTab = 'all';
       let activeChip = 'all';
 
@@ -762,31 +796,32 @@
           showError(t().loadError(err.message));
           allSightings = [];
         }
-        buildSpeciesMap();
+        birdSightings   = allSightings.filter(s => (s.kind || 'bird') !== 'friend');
+        friendSightings = allSightings.filter(s => s.kind === 'friend');
+        speciesMap = buildMap(birdSightings);
+        friendsMap = buildMap(friendSightings);
         renderStats();
         renderSubFilters();
         renderGrid();
+        renderFriends();
       }
 
-      function buildSpeciesMap() {
-        speciesMap = {};
-        for (const s of allSightings) {
-          if (!speciesMap[s.species_zh]) {
-            speciesMap[s.species_zh] = { species: s, sightings: [] };
-          }
-          speciesMap[s.species_zh].sightings.push(s);
-          // keep the rarest sighting as species representative
-          const cur = speciesMap[s.species_zh].species;
-          if (rarityRank(s.rarity) < rarityRank(cur.rarity)) {
-            speciesMap[s.species_zh].species = s;
-          }
+      // group a sighting list by species; representative = rarest sighting
+      function buildMap(list) {
+        const map = {};
+        for (const s of list) {
+          if (!map[s.species_zh]) map[s.species_zh] = { species: s, sightings: [] };
+          map[s.species_zh].sightings.push(s);
+          const cur = map[s.species_zh].species;
+          if (rarityRank(s.rarity) < rarityRank(cur.rarity)) map[s.species_zh].species = s;
         }
+        return map;
       }
 
       function renderStats() {
         const species = Object.keys(speciesMap);
         document.getElementById('stat-species').textContent = species.length;
-        document.getElementById('stat-sightings').textContent = allSightings.length;
+        document.getElementById('stat-sightings').textContent = birdSightings.length;
 
         let rarest = null;
         for (const zh of species) {
@@ -895,65 +930,95 @@
 
         for (const zh of filtered) {
           const { species, sightings } = speciesMap[zh];
-          const card = document.createElement('article');
-          card.className = 'bird-card';
-          card.setAttribute('role', 'button');
-          card.setAttribute('tabindex', '0');
-          card.setAttribute('aria-label', speciesPrimary(species));
+          grid.appendChild(createCard(zh, species, sightings, false));
+        }
+      }
 
-          const photoDiv = document.createElement('div');
-          photoDiv.className = 'card-photo';
+      // build one bird/friend card element
+      function createCard(name, species, sightings, isFriend) {
+        const card = document.createElement('article');
+        card.className = 'bird-card' + (isFriend ? ' friend-card' : '');
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', speciesPrimary(species));
 
-          if (species.thumb) {
-            const img = document.createElement('img');
-            img.src = species.thumb;
-            img.alt = escapeHtml(zh);
-            img.loading = 'lazy';
-            photoDiv.appendChild(img);
-          } else {
-            photoDiv.innerHTML = SILHOUETTE_SVG;
-          }
+        const photoDiv = document.createElement('div');
+        photoDiv.className = 'card-photo';
+        if (species.thumb) {
+          const img = document.createElement('img');
+          img.src = species.thumb;
+          img.alt = escapeHtml(name);
+          img.loading = 'lazy';
+          photoDiv.appendChild(img);
+        } else {
+          photoDiv.innerHTML = SILHOUETTE_SVG;
+        }
+        if (sightings.some(s => s.lifer)) {
+          const badge = document.createElement('span');
+          badge.className = 'lifer-badge';
+          badge.textContent = 'LIFER';
+          photoDiv.appendChild(badge);
+        }
 
-          if (sightings.some(s => s.lifer)) {
-            const badge = document.createElement('span');
-            badge.className = 'lifer-badge';
-            badge.textContent = 'LIFER';
-            photoDiv.appendChild(badge);
-          }
+        const firstDate = sightings.reduce((m, s) => s.date < m ? s.date : m, sightings[0].date);
+        const familyDisp = lang === 'en' ? (species.family_en || species.family) : species.family;
+        const areaDisp   = lang === 'en' ? (species.area_en   || species.area)   : species.area;
 
+        let tagHtml;
+        if (isFriend) {
+          tagHtml = `<span class="card-tag tag-friend">${escapeHtml(t().friendTag)}</span>`;
+        } else {
           const safeRarity = /^[a-z_]+$/.test(species.rarity || '') ? species.rarity : 'common';
-          const rarityClass = 'rarity-' + safeRarity;
-          const firstDate = sightings.reduce((m, s) => s.date < m ? s.date : m, sightings[0].date);
-          const familyDisp = lang === 'en' ? (species.family_en || species.family) : species.family;
-          const areaDisp   = lang === 'en' ? (species.area_en   || species.area)   : species.area;
-          card.innerHTML = `
-            <div class="card-body">
-              <span class="card-zh">${escapeHtml(speciesPrimary(species))}</span>
-              <span class="card-en">${escapeHtml(speciesSecondary(species))}</span>
-              <div class="card-meta">
-                ${familyDisp ? `<span class="card-tag">${escapeHtml(familyDisp)}</span>` : ''}
-                ${areaDisp   ? `<span class="card-tag">${escapeHtml(areaDisp)}</span>`   : ''}
-                ${safeRarity ? `<span class="card-tag ${rarityClass}">${escapeHtml(rarityLabel(safeRarity))}</span>` : ''}
-              </div>
-              <div class="card-sightings">${escapeHtml(t().cardSightings(sightings.length, firstDate))}</div>
-            </div>`;
-          card.prepend(photoDiv);
+          tagHtml = `<span class="card-tag rarity-${safeRarity}">${escapeHtml(rarityLabel(safeRarity))}</span>`;
+        }
 
-          const openDetail = () => openDetailPanel(zh);
-          card.addEventListener('click', openDetail);
-          card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(); } });
-          grid.appendChild(card);
+        card.innerHTML = `
+          <div class="card-body">
+            <span class="card-zh">${escapeHtml(speciesPrimary(species))}</span>
+            <span class="card-en">${escapeHtml(speciesSecondary(species))}</span>
+            <div class="card-meta">
+              ${familyDisp ? `<span class="card-tag">${escapeHtml(familyDisp)}</span>` : ''}
+              ${areaDisp   ? `<span class="card-tag">${escapeHtml(areaDisp)}</span>`   : ''}
+              ${tagHtml}
+            </div>
+            <div class="card-sightings">${escapeHtml(t().cardSightings(sightings.length, firstDate))}</div>
+          </div>`;
+        card.prepend(photoDiv);
+
+        const open = () => openDetailPanel(name);
+        card.addEventListener('click', open);
+        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+        return card;
+      }
+
+      // ─── birds' friends (non-bird companions) ───
+      function renderFriends() {
+        const section = document.getElementById('friends-section');
+        const grid = document.getElementById('friends-grid');
+        const names = Object.keys(friendsMap);
+        if (!names.length) { section.hidden = true; return; }
+        section.hidden = false;
+        grid.innerHTML = '';
+        // sort by first-seen date, then name
+        const firstSeen = n => friendsMap[n].sightings.reduce((m, s) => s.date < m ? s.date : m, friendsMap[n].sightings[0].date);
+        names.sort((a, b) => firstSeen(a).localeCompare(firstSeen(b)) || a.localeCompare(b, 'zh'));
+        for (const name of names) {
+          const { species, sightings } = friendsMap[name];
+          grid.appendChild(createCard(name, species, sightings, true));
         }
       }
 
       // ─── detail panel ───
-      function openDetailPanel(zh) {
-        const { species, sightings } = speciesMap[zh];
+      function openDetailPanel(name) {
+        const entry = speciesMap[name] || friendsMap[name];
+        if (!entry) return;
+        const isFriend = !speciesMap[name];
+        const { species, sightings } = entry;
         document.getElementById('detail-zh').textContent = speciesPrimary(species);
         document.getElementById('detail-sci').textContent = species.species_sci || '';
 
         const photo = document.getElementById('detail-photo');
-        if (species.thumb) { photo.src = species.thumb; photo.alt = zh; photo.style.display = ''; }
+        if (species.thumb) { photo.src = species.thumb; photo.alt = name; photo.style.display = ''; }
         else { photo.style.display = 'none'; }
 
         const dict = t();
@@ -968,7 +1033,8 @@
           [dict.rowFamily, familyDisp],
           [dict.rowArea,   areaDisp],
           [dict.rowCity,   cityDisp],
-          [dict.rowRarity, rarityLabel(species.rarity)],
+          // rarity is bird-only; friends omit it
+          ...(isFriend ? [] : [[dict.rowRarity, rarityLabel(species.rarity)]]),
         ].filter(([, v]) => v);
 
         document.getElementById('detail-rows').innerHTML = rows.map(([k, v]) =>
