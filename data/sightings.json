@@ -438,5 +438,20 @@
     "thumb": "thumbs/2026-05-19_松鼠_1.jpg",
     "lifer": false,
     "note": "哺乳动物观察记录，鸟类的好朋友"
+  },
+  {
+    "id": "2025-05-24_松鼠_001",
+    "date": "2025-05-24",
+    "time": "12:00",
+    "species_zh": "松鼠（欧亚灰松鼠）",
+    "species_en": "Eastern Gray Squirrel",
+    "species_sci": "Sciurus carolinensis",
+    "family": "松鼠科 🐿️",
+    "area": "诺丁汉",
+    "city": "英国",
+    "rarity": "common",
+    "thumb": "thumbs/2025-05-24_松鼠_1.jpg",
+    "lifer": false,
+    "note": "英国诺丁汉观察记录，鸟类的好朋友"
   }
 ]
