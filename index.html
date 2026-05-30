@@ -32,6 +32,7 @@
         --rare-uncommon: #b07520;
         --rare-rare:     #8b3a8b;
         --rare-very:     #b8392c;
+        --rare-domestic: #7a8499;
       }
       html.dark {
         --ink-bg:        #0e1830;
@@ -352,6 +353,7 @@
       .rarity-uncommon { border-color: var(--rare-uncommon); color: var(--rare-uncommon); }
       .rarity-rare     { border-color: var(--rare-rare);     color: var(--rare-rare); }
       .rarity-very_rare { border-color: var(--rare-very);   color: var(--rare-very); }
+      .rarity-domestic { border-color: var(--rare-domestic); color: var(--rare-domestic); }
 
       .card-sightings {
         font-size: 10px;
@@ -504,14 +506,44 @@
         .detail-panel { width: 100vw; }
         .site-footer { padding: 18px; }
       }
+
+      /* keyboard focus ring — only shown during keyboard navigation */
+      :focus-visible { outline: 2px solid var(--royal); outline-offset: 3px; }
+      :focus:not(:focus-visible) { outline: none; }
+
+      /* error banner */
+      .error-banner {
+        background: #fdecea;
+        color: var(--stamp-red);
+        padding: 10px 36px;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        border-bottom: 1px solid #ebbdba;
+        display: none;
+      }
+      html.dark .error-banner { background: #2a1010; border-bottom-color: #4a2020; }
+
+      /* filter result count */
+      .filter-count {
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        color: var(--ink-faint);
+        margin: 0 0 18px;
+        text-transform: uppercase;
+        min-height: 1.5em;
+      }
     </style>
   </head>
   <body>
 
+    <div class="error-banner" id="error-banner" role="alert"></div>
+
     <nav class="banner" aria-label="Bird Diary navigation">
       <span class="brand">🐦 bird diary &nbsp;<span style="opacity:.4">·</span>&nbsp; moltpany</span>
       <div class="nav" id="nav-links">
-        <a href="https://moltpany.github.io/">← archive</a>
+        <a href="https://moltpany.github.io/" data-i18n="archive">← archive</a>
+        <button class="mode-btn" id="lang-toggle" aria-label="Switch language">EN</button>
         <button class="mode-btn" id="mode-toggle" aria-label="Toggle dark mode">dark</button>
       </div>
     </nav>
@@ -520,29 +552,29 @@
 
       <!-- ─── HERO ─── -->
       <header class="hero">
-        <p class="eyebrow">// 个人图鉴 · field guide</p>
+        <p class="eyebrow" data-i18n="eyebrow">// 个人图鉴 · field guide</p>
         <h1>
           <span class="zh">鸟类图鉴</span>
           <span class="en">Bird Diary</span>
         </h1>
-        <p class="hero-desc">
+        <p class="hero-desc" id="hero-desc">
           每张照片解锁一个物种档案。<br>
           拍到的亮起，还没拍到的等待发现。
         </p>
 
         <div class="stats-bar" id="stats-bar">
           <div class="stat">
-            <span class="stat-label">已收录物种</span>
+            <span class="stat-label" data-i18n="statSpecies">已收录物种</span>
             <span class="stat-value" id="stat-species">0</span>
-            <span class="stat-sub">species unlocked</span>
+            <span class="stat-sub" data-i18n="statSpeciesSub">species unlocked</span>
           </div>
           <div class="stat">
-            <span class="stat-label">总目击次数</span>
+            <span class="stat-label" data-i18n="statSightings">总目击次数</span>
             <span class="stat-value" id="stat-sightings">0</span>
-            <span class="stat-sub">total sightings</span>
+            <span class="stat-sub" data-i18n="statSightingsSub">total sightings</span>
           </div>
           <div class="stat">
-            <span class="stat-label">最稀有</span>
+            <span class="stat-label" data-i18n="statRarest">最稀有</span>
             <span class="stat-value" id="stat-rarest" style="font-size:16px;padding-top:6px">—</span>
             <span class="stat-sub" id="stat-rarest-label">rarest species</span>
           </div>
@@ -551,18 +583,19 @@
 
       <!-- ─── FILTERS ─── -->
       <div class="filter-section" aria-label="Filter field guide">
-        <p class="filter-label">// 按分类浏览</p>
+        <p class="filter-label" data-i18n="filterLabel">// 按分类浏览</p>
         <div class="filter-tabs" role="tablist">
-          <button class="filter-tab active" data-tab="all" role="tab" aria-selected="true">全部</button>
-          <button class="filter-tab" data-tab="family" role="tab" aria-selected="false">科目</button>
-          <button class="filter-tab" data-tab="area" role="tab" aria-selected="false">城市区域</button>
-          <button class="filter-tab" data-tab="rarity" role="tab" aria-selected="false">稀有度</button>
+          <button class="filter-tab active" data-tab="all" role="tab" aria-selected="true" data-i18n="tabAll">全部</button>
+          <button class="filter-tab" data-tab="family" role="tab" aria-selected="false" data-i18n="tabFamily">科目</button>
+          <button class="filter-tab" data-tab="area" role="tab" aria-selected="false" data-i18n="tabArea">城市区域</button>
+          <button class="filter-tab" data-tab="rarity" role="tab" aria-selected="false" data-i18n="tabRarity">稀有度</button>
         </div>
       </div>
 
       <div class="sub-filters" id="sub-filters" aria-label="Sub-filter chips"></div>
 
       <!-- ─── BIRD GRID ─── -->
+      <p class="filter-count" id="filter-count" aria-live="polite"></p>
       <main class="bird-grid" id="bird-grid" aria-label="Bird field guide"></main>
 
     </div>
@@ -571,8 +604,8 @@
     <div class="detail-overlay" id="detail-overlay" role="dialog" aria-modal="true" aria-label="物种详情">
       <aside class="detail-panel" id="detail-panel">
         <div class="detail-close">
-          <span>// 物种档案</span>
-          <button id="detail-close-btn">关闭 ×</button>
+          <span data-i18n="detailLabel">// 物种档案</span>
+          <button id="detail-close-btn" data-i18n="detailClose">关闭 ×</button>
         </div>
         <img class="detail-photo" id="detail-photo" src="" alt="">
         <div class="detail-body">
@@ -600,9 +633,108 @@
         localStorage.setItem('bd-mode', dark ? 'dark' : 'light');
       });
 
+      // ─── i18n / 中英切换 ───
+      const I18N = {
+        zh: {
+          docTitle: '鸟类图鉴 · Bird Diary',
+          archive: '← 档案馆',
+          eyebrow: '// 个人图鉴 · field guide',
+          heroDesc: '每张照片解锁一个物种档案。<br>拍到的亮起，还没拍到的等待发现。',
+          statSpecies: '已收录物种',   statSpeciesSub: 'species unlocked',
+          statSightings: '总目击次数', statSightingsSub: 'total sightings',
+          statRarest: '最稀有',
+          filterLabel: '// 按分类浏览',
+          tabAll: '全部', tabFamily: '科目', tabArea: '城市区域', tabRarity: '稀有度',
+          chipAll: '全部',
+          detailLabel: '// 物种档案', detailClose: '关闭 ×',
+          rowEn: '英文名', rowZh: '中文名', rowFamily: '科', rowArea: '地区', rowCity: '城市', rowRarity: '稀有度',
+          emptyTitle: '图鉴还是空的', emptyHint: '// 拍到第一只鸟，这里就会亮起来',
+          countAll: n => `// ${n} 物种已收录`,
+          countFiltered: n => `// 筛选结果：${n} 物种`,
+          cardSightings: (n, d) => `× ${n} 次目击 · 首次 ${d}`,
+          detailSightings: n => `// 目击记录 · ${n} 次`,
+          loadError: m => `// 数据加载失败 · ${m} · 请刷新重试`,
+        },
+        en: {
+          docTitle: 'Bird Diary · 鸟类图鉴',
+          archive: '← archive',
+          eyebrow: '// personal field guide',
+          heroDesc: 'Every photo unlocks a species profile.<br>Spotted ones light up; the rest wait to be found.',
+          statSpecies: 'Species Unlocked', statSpeciesSub: '已收录物种',
+          statSightings: 'Total Sightings', statSightingsSub: '总目击次数',
+          statRarest: 'Rarest',
+          filterLabel: '// browse by category',
+          tabAll: 'All', tabFamily: 'Family', tabArea: 'Region', tabRarity: 'Rarity',
+          chipAll: 'All',
+          detailLabel: '// species profile', detailClose: 'close ×',
+          rowEn: 'English', rowZh: 'Chinese', rowFamily: 'Family', rowArea: 'District', rowCity: 'City', rowRarity: 'Rarity',
+          emptyTitle: 'The guide is empty', emptyHint: '// spot your first bird and it lights up here',
+          countAll: n => `// ${n} species unlocked`,
+          countFiltered: n => `// ${n} species matched`,
+          cardSightings: (n, d) => `× ${n} sighting${n !== 1 ? 's' : ''} · first ${d}`,
+          detailSightings: n => `// sighting log · ${n}×`,
+          loadError: m => `// failed to load data · ${m} · please refresh`,
+        },
+      };
+      const RARITY_EN = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', very_rare: 'Very Rare', domestic: 'Domestic' };
+
+      let lang = localStorage.getItem('bd-lang') === 'en' ? 'en' : 'zh';
+      function t() { return I18N[lang]; }
+      function rarityLabel(r) { return (lang === 'zh' ? RARITY_ZH[r] : RARITY_EN[r]) || r; }
+      // primary / secondary species name based on current language
+      function speciesPrimary(s)   { return lang === 'zh' ? s.species_zh : (s.species_en || s.species_zh); }
+      function speciesSecondary(s) { return lang === 'zh' ? (s.species_en || '') : s.species_zh; }
+
+      const langBtn = document.getElementById('lang-toggle');
+
+      function applyLang() {
+        const dict = t();
+        document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+        document.title = dict.docTitle;
+        langBtn.textContent = lang === 'zh' ? 'EN' : '中文';
+
+        // static text nodes
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.dataset.i18n;
+          if (dict[key] != null && typeof dict[key] === 'string') el.textContent = dict[key];
+        });
+        document.getElementById('hero-desc').innerHTML = dict.heroDesc;
+
+        localStorage.setItem('bd-lang', lang);
+
+        // re-render dynamic content if data is ready
+        if (allSightings.length || Object.keys(speciesMap).length) {
+          renderStats();
+          renderSubFilters();
+          renderGrid();
+        }
+      }
+
+      langBtn.addEventListener('click', () => {
+        lang = lang === 'zh' ? 'en' : 'zh';
+        applyLang();
+      });
+
+      // ─── utilities ───
+      function escapeHtml(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      }
+
+      function showError(msg) {
+        const el = document.getElementById('error-banner');
+        el.textContent = msg;
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 7000);
+      }
+
       // ─── rarity helpers ───
-      const RARITY_ORDER = ['very_rare', 'rare', 'uncommon', 'common'];
-      const RARITY_ZH = { common: '常见', uncommon: '不常见', rare: '稀有', very_rare: '珍稀' };
+      // order = rarest → least rare; 'domestic'(驯化/家养) is not "rare", it sorts last
+      const RARITY_ORDER = ['very_rare', 'rare', 'uncommon', 'common', 'domestic'];
+      const RARITY_ZH = { common: '常见', uncommon: '不常见', rare: '稀有', very_rare: '珍稀', domestic: '驯化' };
+      // unknown rarities sort to the very end and never count as "rarest"
+      function rarityRank(r) { const i = RARITY_ORDER.indexOf(r); return i === -1 ? 99 : i; }
+      // combined city+district key for the 城市区域 filter
+      function areaKey(s) { return s.city ? s.city + ' · ' + s.area : (s.area || ''); }
 
       // ─── silhouette SVG (generic bird) ───
       const SILHOUETTE_SVG = `<svg viewBox="0 0 100 100" fill="currentColor" class="silhouette">
@@ -624,8 +756,12 @@
       async function loadData() {
         try {
           const res = await fetch('data/sightings.json');
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
           allSightings = await res.json();
-        } catch { allSightings = []; }
+        } catch (err) {
+          showError(t().loadError(err.message));
+          allSightings = [];
+        }
         buildSpeciesMap();
         renderStats();
         renderSubFilters();
@@ -641,7 +777,7 @@
           speciesMap[s.species_zh].sightings.push(s);
           // keep the rarest sighting as species representative
           const cur = speciesMap[s.species_zh].species;
-          if (RARITY_ORDER.indexOf(s.rarity) < RARITY_ORDER.indexOf(cur.rarity)) {
+          if (rarityRank(s.rarity) < rarityRank(cur.rarity)) {
             speciesMap[s.species_zh].species = s;
           }
         }
@@ -655,18 +791,42 @@
         let rarest = null;
         for (const zh of species) {
           const s = speciesMap[zh].species;
-          if (!rarest || RARITY_ORDER.indexOf(s.rarity) < RARITY_ORDER.indexOf(rarest.rarity)) rarest = s;
+          if (s.rarity === 'domestic') continue; // 驯化物种不计入"最稀有"
+          if (!rarest || rarityRank(s.rarity) < rarityRank(rarest.rarity)) rarest = s;
         }
         if (rarest) {
-          document.getElementById('stat-rarest').textContent = rarest.species_zh;
-          document.getElementById('stat-rarest-label').textContent = RARITY_ZH[rarest.rarity] || rarest.rarity;
+          document.getElementById('stat-rarest').textContent = speciesPrimary(rarest);
+          document.getElementById('stat-rarest-label').textContent = rarityLabel(rarest.rarity);
         }
+      }
+
+      // combined English city·district key for area filter
+      function areaKeyEn(s) {
+        const c = s.city_en || s.city || '';
+        const a = s.area_en || s.area || '';
+        return c ? c + ' · ' + a : a;
+      }
+
+      // display label for a filter chip given its internal (Chinese) key
+      function chipLabel(tab, internalKey) {
+        if (tab === 'rarity') return rarityLabel(internalKey);
+        if (lang === 'en') {
+          if (tab === 'family') {
+            const s = allSightings.find(s => s.family === internalKey);
+            return (s && s.family_en) || internalKey;
+          }
+          if (tab === 'area') {
+            const s = allSightings.find(s => areaKey(s) === internalKey);
+            return s ? areaKeyEn(s) : internalKey;
+          }
+        }
+        return internalKey;
       }
 
       function getFilterValues() {
         const keys = Object.keys(speciesMap);
         if (activeTab === 'family') return [...new Set(keys.map(k => speciesMap[k].species.family).filter(Boolean))].sort();
-        if (activeTab === 'area')   return [...new Set(keys.map(k => speciesMap[k].species.area).filter(Boolean))].sort();
+        if (activeTab === 'area')   return [...new Set(keys.map(k => areaKey(speciesMap[k].species)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh'));
         if (activeTab === 'rarity') return RARITY_ORDER.filter(r => keys.some(k => speciesMap[k].species.rarity === r));
         return [];
       }
@@ -680,14 +840,14 @@
 
         const allChip = document.createElement('button');
         allChip.className = 'chip' + (activeChip === 'all' ? ' active' : '');
-        allChip.textContent = '全部';
+        allChip.textContent = t().chipAll;
         allChip.addEventListener('click', () => { activeChip = 'all'; renderSubFilters(); renderGrid(); });
         container.appendChild(allChip);
 
         for (const v of values) {
           const chip = document.createElement('button');
           chip.className = 'chip' + (activeChip === v ? ' active' : '');
-          chip.textContent = activeTab === 'rarity' ? (RARITY_ZH[v] || v) : v;
+          chip.textContent = chipLabel(activeTab, v);
           chip.addEventListener('click', () => { activeChip = v; renderSubFilters(); renderGrid(); });
           container.appendChild(chip);
         }
@@ -699,7 +859,7 @@
         return keys.filter(k => {
           const s = speciesMap[k].species;
           if (activeTab === 'family') return s.family === activeChip;
-          if (activeTab === 'area')   return s.area === activeChip;
+          if (activeTab === 'area')   return areaKey(s) === activeChip;
           if (activeTab === 'rarity') return s.rarity === activeChip;
           return true;
         });
@@ -707,20 +867,29 @@
 
       function renderGrid() {
         const grid = document.getElementById('bird-grid');
+        const countEl = document.getElementById('filter-count');
         grid.innerHTML = '';
         const filtered = getFilteredSpecies();
+        const total = Object.keys(speciesMap).length;
+
+        // update result count
+        if (activeTab === 'all' || activeChip === 'all') {
+          countEl.textContent = total ? t().countAll(total) : '';
+        } else {
+          countEl.textContent = t().countFiltered(filtered.length);
+        }
 
         if (!filtered.length) {
           const empty = document.createElement('div');
           empty.className = 'empty-state';
-          empty.innerHTML = `<span class="empty-icon">🐦</span><p>图鉴还是空的</p><small>// 拍到第一只鸟，这里就会亮起来</small>`;
+          empty.innerHTML = `<span class="empty-icon">🐦</span><p>${escapeHtml(t().emptyTitle)}</p><small>${escapeHtml(t().emptyHint)}</small>`;
           grid.appendChild(empty);
           return;
         }
 
         // sort: rarity (rarest first), then alphabetical
         filtered.sort((a, b) => {
-          const ri = RARITY_ORDER.indexOf(speciesMap[a].species.rarity) - RARITY_ORDER.indexOf(speciesMap[b].species.rarity);
+          const ri = rarityRank(speciesMap[a].species.rarity) - rarityRank(speciesMap[b].species.rarity);
           return ri !== 0 ? ri : a.localeCompare(b, 'zh');
         });
 
@@ -730,7 +899,7 @@
           card.className = 'bird-card';
           card.setAttribute('role', 'button');
           card.setAttribute('tabindex', '0');
-          card.setAttribute('aria-label', zh);
+          card.setAttribute('aria-label', speciesPrimary(species));
 
           const photoDiv = document.createElement('div');
           photoDiv.className = 'card-photo';
@@ -738,7 +907,7 @@
           if (species.thumb) {
             const img = document.createElement('img');
             img.src = species.thumb;
-            img.alt = zh;
+            img.alt = escapeHtml(zh);
             img.loading = 'lazy';
             photoDiv.appendChild(img);
           } else {
@@ -752,23 +921,27 @@
             photoDiv.appendChild(badge);
           }
 
-          const rarityClass = 'rarity-' + (species.rarity || 'common');
+          const safeRarity = /^[a-z_]+$/.test(species.rarity || '') ? species.rarity : 'common';
+          const rarityClass = 'rarity-' + safeRarity;
+          const firstDate = sightings.reduce((m, s) => s.date < m ? s.date : m, sightings[0].date);
+          const familyDisp = lang === 'en' ? (species.family_en || species.family) : species.family;
+          const areaDisp   = lang === 'en' ? (species.area_en   || species.area)   : species.area;
           card.innerHTML = `
             <div class="card-body">
-              <span class="card-zh">${zh}</span>
-              <span class="card-en">${species.species_en || ''}</span>
+              <span class="card-zh">${escapeHtml(speciesPrimary(species))}</span>
+              <span class="card-en">${escapeHtml(speciesSecondary(species))}</span>
               <div class="card-meta">
-                ${species.family ? `<span class="card-tag">${species.family}</span>` : ''}
-                ${species.area ? `<span class="card-tag">${species.area}</span>` : ''}
-                ${species.rarity ? `<span class="card-tag ${rarityClass}">${RARITY_ZH[species.rarity] || species.rarity}</span>` : ''}
+                ${familyDisp ? `<span class="card-tag">${escapeHtml(familyDisp)}</span>` : ''}
+                ${areaDisp   ? `<span class="card-tag">${escapeHtml(areaDisp)}</span>`   : ''}
+                ${safeRarity ? `<span class="card-tag ${rarityClass}">${escapeHtml(rarityLabel(safeRarity))}</span>` : ''}
               </div>
-              <div class="card-sightings">× ${sightings.length} 次目击 · 首次 ${sightings[sightings.length-1]?.date || '—'}</div>
+              <div class="card-sightings">${escapeHtml(t().cardSightings(sightings.length, firstDate))}</div>
             </div>`;
           card.prepend(photoDiv);
 
           const openDetail = () => openDetailPanel(zh);
           card.addEventListener('click', openDetail);
-          card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') openDetail(); });
+          card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(); } });
           grid.appendChild(card);
         }
       }
@@ -776,31 +949,42 @@
       // ─── detail panel ───
       function openDetailPanel(zh) {
         const { species, sightings } = speciesMap[zh];
-        document.getElementById('detail-zh').textContent = zh;
+        document.getElementById('detail-zh').textContent = speciesPrimary(species);
         document.getElementById('detail-sci').textContent = species.species_sci || '';
 
         const photo = document.getElementById('detail-photo');
         if (species.thumb) { photo.src = species.thumb; photo.alt = zh; photo.style.display = ''; }
         else { photo.style.display = 'none'; }
 
+        const dict = t();
+        const otherName = lang === 'zh'
+          ? [dict.rowEn, species.species_en]
+          : [dict.rowZh, species.species_zh];
+        const familyDisp = lang === 'en' ? (species.family_en || species.family) : species.family;
+        const areaDisp   = lang === 'en' ? (species.area_en   || species.area)   : species.area;
+        const cityDisp   = lang === 'en' ? (species.city_en   || species.city)   : species.city;
         const rows = [
-          ['英文名', species.species_en],
-          ['科', species.family],
-          ['地区', species.area],
-          ['城市', species.city],
-          ['稀有度', RARITY_ZH[species.rarity] || species.rarity],
+          otherName,
+          [dict.rowFamily, familyDisp],
+          [dict.rowArea,   areaDisp],
+          [dict.rowCity,   cityDisp],
+          [dict.rowRarity, rarityLabel(species.rarity)],
         ].filter(([, v]) => v);
 
         document.getElementById('detail-rows').innerHTML = rows.map(([k, v]) =>
-          `<div class="detail-row"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+          `<div class="detail-row"><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('');
 
         const list = document.getElementById('detail-sightings-list');
-        list.innerHTML = `<div class="detail-sightings-label">// 目击记录 · ${sightings.length} 次</div>` +
-          sightings.map(s => `
+        const ordered = [...sightings].sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || ''));
+        list.innerHTML = `<div class="detail-sightings-label">${escapeHtml(dict.detailSightings(sightings.length))}</div>` +
+          ordered.map(s => {
+            const sArea = lang === 'en' ? (s.area_en || s.area || '') : (s.area || '');
+            return `
             <div class="sighting-entry">
-              <span>${s.time || ''} ${s.area || ''}</span>
-              <span class="s-date">${s.date}</span>
-            </div>`).join('');
+              <span>${escapeHtml(s.time || '')} ${escapeHtml(sArea)}</span>
+              <span class="s-date">${escapeHtml(s.date)}</span>
+            </div>`;
+          }).join('');
 
         document.getElementById('detail-overlay').classList.add('open');
         document.getElementById('detail-close-btn').focus();
@@ -830,6 +1014,7 @@
         });
       });
 
+      applyLang();
       loadData();
     </script>
   </body>
