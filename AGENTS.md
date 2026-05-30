@@ -9,6 +9,7 @@
 ## Repository layout
 - `index.html` — single-page field guide app (no build step). Supports Chinese / English toggle.
 - `data/sightings.json` — array of published sighting objects (written by Agent-Bird).
+- `data/geo.json` — distribution-map geometry & per-species range data (see "Distribution maps" below).
 - `thumbs/` — thumbnail images (max 400×400px), named `YYYY-MM-DD_<species_zh>_<n>.jpg`.
 - `assets/silhouettes/` — optional custom silhouette SVGs per species.
 - `AGENTS.md` — this file.
@@ -90,7 +91,43 @@ Example friend entry:
 }
 ```
 
-### Valid values for `rarity`
+### Distribution maps · 分布范围地图
+Each card flips on hover to reveal a map of the country where the species was
+photographed, with the species' **approximate distribution shaded blue** and the
+**user's own photo locations marked with a red circle**. This is driven by
+`data/geo.json`:
+
+```jsonc
+{
+  "bbox":      { "China": {lonMin,lonMax,latMin,latMax}, "UK": {...} },
+  "provinces": { "浙江": [[lon,lat], ...], ... },   // 34 simplified China province outlines
+  "uk":        [ [[lon,lat], ...], ... ],            // UK outline rings
+  "ranges":    { "白头鹎": ["上海","浙江", ...], ... } // species_zh → province short-names
+}
+```
+
+**When publishing a new species**, add a `ranges` entry keyed by `species_zh`,
+listing the China **province short-names** where the bird occurs (breeding +
+wintering). Province short-names are: `北京 天津 河北 山西 内蒙古 辽宁 吉林
+黑龙江 上海 江苏 浙江 安徽 福建 江西 山东 河南 湖北 湖南 广东 广西 海南 重庆
+四川 贵州 云南 西藏 陕西 甘肃 青海 宁夏 新疆 台湾 香港 澳门`. Look up the
+species' real range (e.g. on a field guide / eBird) and list every province it
+covers — it's fine to be approximate; this is an at-a-glance range, not a precise
+map. Species seen only outside China (e.g. UK) need no `ranges` entry — the whole
+foreign country outline is shaded.
+
+**When photographing in a new city**, add the city to `CITY_COORDS_MAP` in
+`index.html` as `'城市': [lon, lat, 'China'|'UK']`. For a brand-new country, also
+add its `bbox` and an outline (under a new key alongside `uk`) to `geo.json` and
+extend the renderer.
+
+Notes:
+- Ranges are intentionally approximate; province granularity is enough.
+- Friends (squirrels etc.) may also have a `ranges` entry — same format.
+- If `geo.json` is missing or a species has no range, the card back falls back to
+  a plain text list of photo locations (non-fatal).
+
+## Valid values for `rarity`
 `common` | `uncommon` | `rare` | `very_rare` | `domestic`
 
 ### Family & area name reference
