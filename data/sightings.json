@@ -513,5 +513,22 @@
     "thumb": "thumbs/2026-05-31_菜粉蝶_1.jpg",
     "lifer": true,
     "note": "雌蝶，雪白翅膀，前翅顶端具黑斑"
+  },
+  {
+    "id": "2026-06-05_棕背伯劳_001",
+    "date": "2026-06-05",
+    "time": "15:31",
+    "species_zh": "棕背伯劳",
+    "species_en": "Long-tailed Shrike",
+    "species_sci": "Lanius schach",
+    "family": "伯劳科",
+    "family_en": "Shrikes",
+    "area": "宁波",
+    "area_en": "Ningbo",
+    "city": "宁波",
+    "city_en": "Ningbo",
+    "rarity": "common",
+    "thumb": "thumbs/2026-06-05_棕背伯劳_1.jpg",
+    "lifer": true
   }
 ]
