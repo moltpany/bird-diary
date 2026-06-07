@@ -886,6 +886,10 @@
             renderGrid();
             renderFriends();
           }
+          // re-render open detail panel so it reflects the new language
+          if (openSpeciesName && document.getElementById('detail-overlay').classList.contains('open')) {
+            openDetailPanel(openSpeciesName);
+          }
         }
       }
 
@@ -946,7 +950,7 @@
 
       // build the flip-side distribution map for one species
       // flipBack=true adds a "返回/back" button in the title bar (used on card backs)
-      function buildMapSvg(sightings, isFriend, speciesName, flipBack) {
+      function buildMapSvg(sightings, speciesName, flipBack) {
         const mapTitle = escapeHtml(t().mapRange);
         const backBtn = flipBack ? `<button class="flip-back-btn" type="button">${escapeHtml(t().flipBack)}</button>` : '';
 
@@ -1042,21 +1046,20 @@
       let friendsMap = {};   // species_zh → { species, sightings[] } — friends only
       let activeTab = 'all';
       let activeChip = 'all';
+      let openSpeciesName = null;
 
       async function loadData() {
-        try {
-          const res = await fetch('data/sightings.json');
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          allSightings = await res.json();
-        } catch (err) {
-          showError(t().loadError(err.message));
+        const [sightingsResult, geoResult] = await Promise.allSettled([
+          fetch('data/sightings.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+          fetch('data/geo.json').then(r => r.ok ? r.json() : null),
+        ]);
+        if (sightingsResult.status === 'fulfilled') {
+          allSightings = sightingsResult.value;
+        } else {
+          showError(t().loadError(sightingsResult.reason.message));
           allSightings = [];
         }
-        // distribution geometry (non-fatal if it fails — cards fall back to text)
-        try {
-          const gres = await fetch('data/geo.json');
-          if (gres.ok) GEO = await gres.json();
-        } catch (_) { GEO = null; }
+        GEO = geoResult.status === 'fulfilled' ? geoResult.value : null;
         birdSightings   = allSightings.filter(s => (s.kind || 'bird') !== 'friend');
         friendSightings = allSightings.filter(s => s.kind === 'friend');
         speciesMap = buildMap(birdSightings);
@@ -1264,7 +1267,7 @@
         // ── BACK (distribution map) ──
         const back = document.createElement('div');
         back.className = 'card-back';
-        back.innerHTML = buildMapSvg(sightings, isFriend, name, true);
+        back.innerHTML = buildMapSvg(sightings, name, true);
         const backBtn = back.querySelector('.flip-back-btn');
         if (backBtn) backBtn.addEventListener('click', e => { e.stopPropagation(); card.classList.remove('flipped'); });
 
@@ -1272,9 +1275,8 @@
         inner.appendChild(back);
         card.appendChild(inner);
 
-        const open = () => openDetailPanel(name);
-        card.addEventListener('click', open);
-        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+        card.addEventListener('click', () => { if (!card.classList.contains('flipped')) openDetailPanel(name); });
+        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetailPanel(name); } });
         return card;
       }
 
@@ -1299,12 +1301,14 @@
       function openDetailPanel(name) {
         const entry = speciesMap[name] || friendsMap[name];
         if (!entry) return;
+        openSpeciesName = name;
         const isFriend = !speciesMap[name];
         const { species, sightings } = entry;
         document.getElementById('detail-zh').textContent = speciesPrimary(species);
         document.getElementById('detail-sci').textContent = species.species_sci || '';
 
         const photo = document.getElementById('detail-photo');
+        photo.onerror = () => { photo.style.display = 'none'; };
         if (species.thumb) { photo.src = species.thumb; photo.alt = name; photo.style.display = ''; }
         else { photo.style.display = 'none'; }
 
@@ -1330,7 +1334,7 @@
         // distribution map (hidden if there's nothing mappable)
         const mapBox = document.getElementById('detail-map');
         const mappable = sightings.some(s => CITY_COORDS_MAP[s.city || '']);
-        if (mappable) { mapBox.hidden = false; mapBox.innerHTML = buildMapSvg(sightings, isFriend, name, false); }
+        if (mappable) { mapBox.hidden = false; mapBox.innerHTML = buildMapSvg(sightings, name, false); }
         else { mapBox.hidden = true; mapBox.innerHTML = ''; }
 
         const list = document.getElementById('detail-sightings-list');
@@ -1349,15 +1353,16 @@
         document.getElementById('detail-close-btn').focus();
       }
 
-      document.getElementById('detail-close-btn').addEventListener('click', () => {
+      function closeDetailPanel() {
         document.getElementById('detail-overlay').classList.remove('open');
-      });
+        openSpeciesName = null;
+      }
+      document.getElementById('detail-close-btn').addEventListener('click', closeDetailPanel);
       document.getElementById('detail-overlay').addEventListener('click', e => {
-        if (e.target === document.getElementById('detail-overlay'))
-          document.getElementById('detail-overlay').classList.remove('open');
+        if (e.target === document.getElementById('detail-overlay')) closeDetailPanel();
       });
       document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') document.getElementById('detail-overlay').classList.remove('open');
+        if (e.key === 'Escape') closeDetailPanel();
       });
 
       // ─── mind map ───
@@ -1477,6 +1482,7 @@
             setMindmapVisible(false);
             renderSubFilters();
             renderGrid();
+            renderFriends();
           }
         });
       });
