@@ -530,5 +530,22 @@
     "rarity": "common",
     "thumb": "thumbs/2026-06-05_棕背伯劳_1.jpg",
     "lifer": true
+  },
+  {
+    "id": "2026-06-07_黑尾蜡嘴雀_001",
+    "date": "2026-06-07",
+    "time": "17:27",
+    "species_zh": "黑尾蜡嘴雀",
+    "species_en": "Yellow-billed Grosbeak",
+    "species_sci": "Eophona migratoria",
+    "family": "燕雀科",
+    "family_en": "Finches",
+    "area": "鄞州区",
+    "area_en": "Yinzhou District",
+    "city": "宁波",
+    "city_en": "Ningbo",
+    "rarity": "common",
+    "thumb": "thumbs/2026-06-07_黑尾蜡嘴雀_1.jpg",
+    "lifer": true
   }
 ]
