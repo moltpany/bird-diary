@@ -767,6 +767,13 @@
         width: 16px; height: 8px; color: #4a3a28; pointer-events: none; z-index: 0;
       }
       html.dark .ws-bird .ws-legs { color: #c9a878; }
+      /* AI 2D portrait: a free-standing illustration, not a circular photo cutout */
+      .ws-bird.has-portrait img {
+        border: none; border-radius: 0; object-fit: contain;
+        background: transparent; box-shadow: none;
+        filter: drop-shadow(0 4px 5px rgba(18,39,102,0.3));
+      }
+      .ws-bird.has-portrait .ws-legs { display: none; }   /* illustration draws its own feet */
       .ws-bird .ws-shadow {
         position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%);
         width: 36px; height: 8px; border-radius: 50%;
@@ -1252,11 +1259,13 @@
       let activeTab = 'all';
       let activeChip = 'all';
       let openSpeciesName = null;
+      let PORTRAITS = {};   // species_zh → portrait image path (optional, from data/portraits.json)
 
       async function loadData() {
-        const [sightingsResult, geoResult] = await Promise.allSettled([
+        const [sightingsResult, geoResult, portraitsResult] = await Promise.allSettled([
           fetch('data/sightings.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
           fetch('data/geo.json').then(r => r.ok ? r.json() : null),
+          fetch('data/portraits.json').then(r => r.ok ? r.json() : null),
         ]);
         if (sightingsResult.status === 'fulfilled') {
           allSightings = sightingsResult.value;
@@ -1265,6 +1274,7 @@
           allSightings = [];
         }
         GEO = geoResult.status === 'fulfilled' ? geoResult.value : null;
+        PORTRAITS = (portraitsResult.status === 'fulfilled' && portraitsResult.value) || {};
         birdSightings   = allSightings.filter(s => (s.kind || 'bird') !== 'friend');
         friendSightings = allSightings.filter(s => s.kind === 'friend');
         speciesMap = buildMap(birdSightings);
@@ -1774,9 +1784,12 @@
         if (perchIdx < 0) return;
         const pick = wsPick();
         const p = wsScene.perches[perchIdx];
+        // prefer an AI-generated 2D portrait if this species has one; else the photo
+        const portrait = PORTRAITS[pick.name];
+        const imgSrc = portrait || pick.species.thumb;
         const el = document.createElement('div');
-        el.className = 'ws-bird spawning';
-        el.innerHTML = `${WS_LEGS_SVG}<div class="ws-shadow"></div><div class="ws-body"><div class="ws-pose"><img src="${escapeHtml(pick.species.thumb)}" alt=""></div></div><span class="ws-name"></span>`;
+        el.className = 'ws-bird spawning' + (portrait ? ' has-portrait' : '');
+        el.innerHTML = `${WS_LEGS_SVG}<div class="ws-shadow"></div><div class="ws-body"><div class="ws-pose"><img src="${escapeHtml(imgSrc)}" alt=""></div></div><span class="ws-name"></span>`;
         el.querySelector('.ws-name').textContent = speciesPrimary(pick.species);
         el.style.left = p.x + '%';
         el.style.top  = (p.y - 12) + '%';
