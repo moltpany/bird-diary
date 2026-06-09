@@ -733,8 +733,18 @@
         text-align: center; padding: 24px; font-size: 12px; color: var(--ink-secondary);
         letter-spacing: 0.06em; line-height: 1.7;
       }
+      /* shop decorations on the sill */
+      .ws-decor {
+        position: absolute; transform: translateX(-50%); font-size: 27px; line-height: 1;
+        z-index: 1; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(18,39,102,0.25));
+      }
+      .ws-decor.sway { transform-origin: 50% 0; animation: wsSway 3.6s ease-in-out infinite; }
+      @keyframes wsSway {
+        0%, 100% { transform: translateX(-50%) rotate(-5deg); }
+        50%      { transform: translateX(-50%) rotate(5deg); }
+      }
       .ws-bird {
-        position: absolute; width: 54px; height: 54px;
+        position: absolute; width: 54px; height: 54px; z-index: 2;
         margin-left: -27px; margin-top: -50px;   /* anchor point = feet */
         transition: left 0.55s cubic-bezier(.34,.1,.3,1), top 0.55s cubic-bezier(.34,.1,.3,1), transform 0.25s ease, opacity 0.45s ease;
         cursor: pointer; will-change: left, top, transform;
@@ -782,6 +792,34 @@
         font-size: 10px; letter-spacing: 0.04em; color: var(--ink-faint);
         padding: 8px 16px 10px; margin: 0; border-top: 1px solid var(--rule-soft);
       }
+      /* ─── shop ─── */
+      .ws-shop-btn { font-size: 9.5px; }
+      .ws-shop {
+        border-bottom: 1px solid var(--rule-soft);
+        background: var(--paper-tab); padding: 14px 16px;
+      }
+      .ws-shop-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px;
+      }
+      .ws-shop-item {
+        border: 1px solid var(--rule-soft); background: var(--paper);
+        padding: 10px 12px; display: flex; flex-direction: column; gap: 5px;
+      }
+      .ws-shop-item.owned { border-color: var(--rare-common); }
+      .si-top { display: flex; align-items: center; gap: 8px; }
+      .si-icon { font-size: 22px; line-height: 1; }
+      .si-name { font-size: 12px; color: var(--ink-primary); }
+      .si-effect { font-size: 9px; letter-spacing: 0.04em; color: var(--bread); min-height: 1em; }
+      .ws-shop-buy {
+        margin-top: 2px; align-self: flex-start;
+        background: var(--royal); color: #fff; border: 1px solid var(--royal);
+        font-family: inherit; font-size: 10px; letter-spacing: 0.1em;
+        padding: 4px 12px; cursor: pointer; transition: opacity 0.15s;
+      }
+      html.dark .ws-shop-buy { color: var(--ink-bg); }
+      .ws-shop-buy:hover:not(:disabled) { opacity: 0.85; }
+      .ws-shop-buy:disabled { background: transparent; color: var(--ink-faint); border-color: var(--rule-soft); cursor: default; }
+      .ws-shop-buy.owned-tag { background: transparent; color: var(--rare-common); border-color: var(--rare-common); cursor: default; }
       @media (prefers-reduced-motion: reduce) {
         .ws-bird .ws-body { animation: none; }
         .ws-bird, .ws-float { transition: opacity 0.2s; animation-duration: 0.01ms; }
@@ -846,7 +884,11 @@
           <div class="ws-hud">
             <span class="ws-stat">🪶 <b id="ws-feathers">0</b> <span data-i18n="wsFeathers">羽毛</span></span>
             <span class="ws-stat">🪙 <b id="ws-coins">0</b> <span data-i18n="wsCoins">金币</span></span>
+            <button class="mode-btn ws-shop-btn" id="ws-shop-btn" data-i18n="wsShop" aria-expanded="false" aria-controls="ws-shop">🛒 商店</button>
           </div>
+        </div>
+        <div class="ws-shop" id="ws-shop" hidden>
+          <div class="ws-shop-grid" id="ws-shop-grid"></div>
         </div>
         <div class="ws-stage" id="ws-stage">
           <div class="ws-ledge"></div>
@@ -956,6 +998,7 @@
           wsEmpty: '还没有鸟可以停在窗台上。<br>拍到第一只鸟，它就会飞来这里。',
           wsHint: '移到鸟附近它会跳开 · 点一下它就飞走，留下羽毛和金币',
           navGame: '🪟 窗台',
+          wsShop: '🛒 商店', wsShopBuy: '买', wsShopOwned: '已拥有',
         },
         en: {
           docTitle: 'Bird Diary · 鸟类图鉴',
@@ -989,6 +1032,7 @@
           wsEmpty: 'No birds to perch on the sill yet.<br>Photograph your first bird and it will fly in.',
           wsHint: 'Move near a bird and it hops away · tap one to flush it for a feather and coins',
           navGame: '🪟 windowsill',
+          wsShop: '🛒 shop', wsShopBuy: 'buy', wsShopOwned: 'owned',
         },
       };
       const RARITY_EN = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', very_rare: 'Very Rare', domestic: 'Domestic' };
@@ -1637,10 +1681,24 @@
       // so a garden / 3D view can be slotted in later without touching the loop.
       const WS = {
         stage: null, birds: [], pool: [], started: false,
-        maxBirds: 4, lastMove: 0,
+        maxBirds: 4, baseBirds: 4, lastMove: 0, spawnBoost: false,
         coins:    parseInt(localStorage.getItem('bd-ws-coins')    || '0', 10) || 0,
         feathers: parseInt(localStorage.getItem('bd-ws-feathers') || '0', 10) || 0,
+        owned:    new Set(JSON.parse(localStorage.getItem('bd-ws-owned') || '[]')),
       };
+
+      // ── shop catalog: decorations bought with coins, placed on the sill.
+      //    `effect` ties a purchase to a mechanic — 'capacity' adds a perch
+      //    worth of birds, 'rate' makes birds visit more often. x / bottom are
+      //    stage-percent placement; `sway` adds a gentle hanging animation. ──
+      const SHOP_ITEMS = [
+        { id: 'plant',  icon: '🪴', zh: '盆栽',   en: 'Potted Plant', cost: 10, x: 7,  bottom: 2 },
+        { id: 'flower', icon: '🌻', zh: '向日葵', en: 'Sunflower',    cost: 16, x: 94, bottom: 2 },
+        { id: 'lantern',icon: '🏮', zh: '灯笼',   en: 'Lantern',      cost: 18, x: 20, bottom: 50, sway: true },
+        { id: 'chime',  icon: '🎐', zh: '风铃',   en: 'Wind Chime',   cost: 22, x: 80, bottom: 52, sway: true },
+        { id: 'nest',   icon: '🪺', zh: '鸟窝',   en: 'Nest',         cost: 30, x: 33, bottom: 2, effect: 'capacity', effZh: '+1 停留位', effEn: '+1 perch' },
+        { id: 'feeder', icon: '🌾', zh: '喂食器', en: 'Feeder',       cost: 40, x: 64, bottom: 2, effect: 'rate', effZh: '鸟来得更勤', effEn: 'birds visit more' },
+      ];
 
       // rarity → spawn weight (rarer appears less often) + reward on flush
       const WS_RARITY = {
@@ -1756,6 +1814,7 @@
         localStorage.setItem('bd-ws-coins', WS.coins);
         localStorage.setItem('bd-ws-feathers', WS.feathers);
         wsUpdateHud();
+        wsRenderShop();   // keep buy buttons' affordability in sync
         wsFloat(xPct, yPct, '+' + coins + ' 🪙', false);
         wsFloat(xPct, yPct - 5, '🪶 +' + feathers, true);
       }
@@ -1775,6 +1834,62 @@
         document.getElementById('ws-feathers').textContent = WS.feathers;
       }
 
+      // ── shop ──
+      function wsItemName(item) { return lang === 'zh' ? item.zh : item.en; }
+      function wsItemEffect(item) { return item.effect ? (lang === 'zh' ? item.effZh : item.effEn) : ''; }
+
+      function wsRenderShop() {
+        const grid = document.getElementById('ws-shop-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        for (const item of SHOP_ITEMS) {
+          const owned = WS.owned.has(item.id);
+          const afford = WS.coins >= item.cost;
+          const card = document.createElement('div');
+          card.className = 'ws-shop-item' + (owned ? ' owned' : '');
+          const btn = owned
+            ? `<button class="ws-shop-buy owned-tag" disabled>✓ ${escapeHtml(t().wsShopOwned)}</button>`
+            : `<button class="ws-shop-buy" data-id="${item.id}"${afford ? '' : ' disabled'}>🪙 ${item.cost} · ${escapeHtml(t().wsShopBuy)}</button>`;
+          card.innerHTML = `
+            <div class="si-top"><span class="si-icon">${item.icon}</span><span class="si-name">${escapeHtml(wsItemName(item))}</span></div>
+            <span class="si-effect">${escapeHtml(wsItemEffect(item))}</span>
+            ${btn}`;
+          const buyBtn = card.querySelector('.ws-shop-buy[data-id]');
+          if (buyBtn) buyBtn.addEventListener('click', () => wsBuy(item));
+          grid.appendChild(card);
+        }
+      }
+
+      function wsBuy(item) {
+        if (WS.owned.has(item.id) || WS.coins < item.cost) return;
+        WS.coins -= item.cost;
+        WS.owned.add(item.id);
+        localStorage.setItem('bd-ws-coins', WS.coins);
+        localStorage.setItem('bd-ws-owned', JSON.stringify([...WS.owned]));
+        wsUpdateHud();
+        wsApplyDecor();
+        wsRenderShop();
+      }
+
+      // render owned decorations onto the stage + recompute their mechanics
+      function wsApplyDecor() {
+        if (!WS.stage) return;
+        WS.stage.querySelectorAll('.ws-decor').forEach(e => e.remove());
+        for (const item of SHOP_ITEMS) {
+          if (!WS.owned.has(item.id)) continue;
+          const d = document.createElement('div');
+          d.className = 'ws-decor' + (item.sway ? ' sway' : '');
+          d.textContent = item.icon;
+          d.style.left = item.x + '%';
+          d.style.bottom = (item.bottom || 2) + '%';
+          d.setAttribute('aria-hidden', 'true');
+          WS.stage.appendChild(d);
+        }
+        const extraPerch = SHOP_ITEMS.filter(i => i.effect === 'capacity' && WS.owned.has(i.id)).length;
+        WS.maxBirds = Math.min(WS.baseBirds + extraPerch, wsScene.perches.length);
+        WS.spawnBoost = SHOP_ITEMS.some(i => i.effect === 'rate' && WS.owned.has(i.id));
+      }
+
       function wsShowEmpty() {
         if (WS.stage.querySelector('.ws-empty')) return;
         const d = document.createElement('div');
@@ -1789,17 +1904,29 @@
         if (WS.birds.length && Math.random() < 0.04) {
           wsFlush(WS.birds[Math.floor(Math.random() * WS.birds.length)], false);
         }
-        if (WS.birds.filter(b => !b.leaving).length < WS.maxBirds && Math.random() < 0.5) wsSpawn();
+        if (WS.birds.filter(b => !b.leaving).length < WS.maxBirds && Math.random() < (WS.spawnBoost ? 0.82 : 0.5)) wsSpawn();
       }
 
       function initWindowsill() {
         WS.stage = document.getElementById('ws-stage');
         if (!WS.stage || WS.started) return;
+        WS.baseBirds = window.innerWidth < 600 ? 3 : 4;
         wsUpdateHud();
+
+        // shop works regardless of whether any birds are unlocked yet
+        const shopBtn = document.getElementById('ws-shop-btn');
+        const shopPanel = document.getElementById('ws-shop');
+        shopBtn.addEventListener('click', () => {
+          const open = shopPanel.hasAttribute('hidden');
+          shopPanel.toggleAttribute('hidden', !open);
+          shopBtn.setAttribute('aria-expanded', String(open));
+        });
+        wsRenderShop();
+        wsApplyDecor();   // sets WS.maxBirds / spawnBoost from owned items
+
         WS.pool = wsBuildPool();
         if (!WS.pool.length) { wsShowEmpty(); return; }
         WS.started = true;
-        WS.maxBirds = window.innerWidth < 600 ? 3 : 4;
         const n = Math.min(WS.maxBirds, wsScene.perches.length);
         for (let i = 0; i < n; i++) setTimeout(wsSpawn, i * 420);
         WS.stage.addEventListener('pointermove', wsOnMove);
@@ -1815,6 +1942,7 @@
           const n = b.el.querySelector('.ws-name');
           if (n) n.textContent = speciesPrimary(b.pick.species);
         });
+        wsRenderShop();
       };
 
       applyLang();
