@@ -8,6 +8,21 @@ The rendering side is already live: `index.html` reads `data/portraits.json` and
 for any species with an entry, shows the portrait instead of the photo. So you can
 fill this in gradually — every entry you add lights up in the game.
 
+## ▶ Start with a 3-species sample (do this first)
+
+Before generating all 32, produce just these three, commit, and let the human
+eyeball the art direction on the windowsill (does the style look right? does it
+sit well next to the remaining photos?):
+
+- `红嘴蓝鹊` (Red-billed Blue Magpie) — long-tailed, bold colors → tests shape
+- `白头鹎` (Light-vented Bulbul) — common, plain → tests a subtle subject
+- `松鼠（赤腹松鼠）` (Pallas's Squirrel) — a non-bird "friend" → tests the
+  prompt on a mammal
+
+Only after the sample is approved, batch-generate the rest of the manifest with
+the **same** prompt and params. If the style needs tweaking, change the canonical
+prompt once and regenerate — never hand-tune per species.
+
 ## For each species
 
 1. **Input photo (image-to-image source):** the `thumb` path in the manifest
