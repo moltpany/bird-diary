@@ -1285,6 +1285,7 @@
       let activeChip = 'all';
       let openSpeciesName = null;
       let PORTRAITS = {};   // species_zh → portrait image path (optional, from data/portraits.json)
+      const PORTRAIT_PREVIEW = new URLSearchParams(location.search).has('portraitPreview');
 
       async function loadData() {
         const [sightingsResult, geoResult, portraitsResult] = await Promise.allSettled([
@@ -1791,6 +1792,11 @@
           if (!species.thumb) continue;
           pool.push({ name, species, isFriend: true, weight: 8 });
         }
+        if (PORTRAIT_PREVIEW) {
+          const portraitNames = new Set(Object.keys(PORTRAITS));
+          const previewPool = pool.filter(p => portraitNames.has(p.name));
+          if (previewPool.length) return previewPool;
+        }
         return pool;
       }
 
@@ -1803,6 +1809,11 @@
       }
 
       function wsPick() {
+        if (PORTRAIT_PREVIEW) {
+          const active = new Set(WS.birds.filter(b => !b.leaving).map(b => b.pick.name));
+          const next = WS.pool.find(p => !active.has(p.name));
+          if (next) return next;
+        }
         const total = WS.pool.reduce((s, p) => s + wsWeight(p), 0);
         let r = Math.random() * total;
         for (const p of WS.pool) { r -= wsWeight(p); if (r <= 0) return p; }
