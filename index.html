@@ -51,6 +51,8 @@
 
       * { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
       body {
         background-color: var(--ink-bg);
         color: var(--ink-primary);
@@ -685,7 +687,15 @@
         margin: 28px 0 4px;
         border: 1px solid var(--royal);
         background: var(--paper);
+        scroll-margin-top: 64px;   /* clear the sticky banner when jumped-to */
       }
+      .banner .nav a.nav-game {
+        color: var(--royal);
+        border: 1px solid var(--rule-soft);
+        padding: 3px 10px;
+        letter-spacing: 0.12em;
+      }
+      .banner .nav a.nav-game:hover { border-color: var(--royal); background: var(--paper); }
       .ws-head {
         display: flex; align-items: center; justify-content: space-between;
         gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--rule-soft);
@@ -789,6 +799,7 @@
     <nav class="banner" aria-label="Bird Diary navigation">
       <span class="brand">🐦 bird diary &nbsp;<span style="opacity:.4">·</span>&nbsp; moltpany</span>
       <div class="nav" id="nav-links">
+        <a href="#windowsill" class="nav-game" data-i18n="navGame">🪟 窗台</a>
         <a href="https://moltpany.github.io/" data-i18n="archive">← archive</a>
         <button class="mode-btn" id="lang-toggle" aria-label="Switch language">EN</button>
         <button class="mode-btn" id="mode-toggle" aria-label="Toggle dark mode">dark</button>
@@ -944,6 +955,7 @@
           wsFeathers: '羽毛', wsCoins: '金币',
           wsEmpty: '还没有鸟可以停在窗台上。<br>拍到第一只鸟，它就会飞来这里。',
           wsHint: '移到鸟附近它会跳开 · 点一下它就飞走，留下羽毛和金币',
+          navGame: '🪟 窗台',
         },
         en: {
           docTitle: 'Bird Diary · 鸟类图鉴',
@@ -976,6 +988,7 @@
           wsFeathers: 'feathers', wsCoins: 'coins',
           wsEmpty: 'No birds to perch on the sill yet.<br>Photograph your first bird and it will fly in.',
           wsHint: 'Move near a bird and it hops away · tap one to flush it for a feather and coins',
+          navGame: '🪟 windowsill',
         },
       };
       const RARITY_EN = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', very_rare: 'Very Rare', domestic: 'Domestic' };
