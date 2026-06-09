@@ -750,15 +750,23 @@
         cursor: pointer; will-change: left, top, transform;
       }
       .ws-bird.flip { transform: scaleX(-1); }
-      .ws-bird .ws-body {
+      .ws-bird .ws-body {  /* idle bob + gentle head-tilt */
         width: 100%; height: 100%;
         animation: wsBob 2.8s ease-in-out infinite;
       }
+      .ws-bird .ws-pose { width: 100%; height: 100%; }   /* one-shot hop layer */
+      .ws-bird .ws-pose.hop { animation: wsHop 0.42s ease; }
       .ws-bird img {
         width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
         border: 2px solid var(--paper); box-shadow: 0 4px 9px -3px rgba(18,39,102,0.45);
         display: block; pointer-events: none;
       }
+      /* twig legs — make the round photo read as a bird standing on the sill */
+      .ws-bird .ws-legs {
+        position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
+        width: 16px; height: 8px; color: #4a3a28; pointer-events: none; z-index: 0;
+      }
+      html.dark .ws-bird .ws-legs { color: #c9a878; }
       .ws-bird .ws-shadow {
         position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%);
         width: 36px; height: 8px; border-radius: 50%;
@@ -775,7 +783,18 @@
       }
       .ws-bird.flip .ws-name { transform: translateX(-50%) scaleX(-1); }  /* un-mirror the label */
       @media (hover: hover) { .ws-bird:hover .ws-name { opacity: 1; } }
-      @keyframes wsBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+      @keyframes wsBob {
+        0%, 100% { transform: translateY(0) rotate(0); }
+        25% { transform: translateY(-3px) rotate(-2.5deg); }
+        50% { transform: translateY(-4px) rotate(0); }
+        75% { transform: translateY(-3px) rotate(2.5deg); }
+      }
+      @keyframes wsHop {
+        0%   { transform: translateY(0) scaleY(1); }
+        30%  { transform: translateY(-11px) scaleY(1.06); }
+        62%  { transform: translateY(0) scaleY(0.9); }
+        100% { transform: translateY(0) scaleY(1); }
+      }
       /* floating reward (+coins / feather) */
       .ws-float {
         position: absolute; pointer-events: none; font-size: 13px; font-weight: 500;
@@ -821,7 +840,7 @@
       .ws-shop-buy:disabled { background: transparent; color: var(--ink-faint); border-color: var(--rule-soft); cursor: default; }
       .ws-shop-buy.owned-tag { background: transparent; color: var(--rare-common); border-color: var(--rare-common); cursor: default; }
       @media (prefers-reduced-motion: reduce) {
-        .ws-bird .ws-body { animation: none; }
+        .ws-bird .ws-body, .ws-bird .ws-pose.hop { animation: none; }
         .ws-bird, .ws-float { transition: opacity 0.2s; animation-duration: 0.01ms; }
       }
       @media (max-width: 600px) {
@@ -1719,6 +1738,9 @@
       };
       let wsScene = SCENES.windowsill;
 
+      // twig legs drawn under each bird's photo (CSS-colored via currentColor)
+      const WS_LEGS_SVG = `<svg class="ws-legs" viewBox="0 0 16 8" aria-hidden="true"><path d="M6 0 L6 6 M3.5 7.5 L6 6 L8.5 7.5 M10 0 L10 6 M7.5 7.5 L10 6 L12.5 7.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
       function wsBuildPool() {
         const pool = [];
         for (const [name, { species }] of Object.entries(speciesMap)) {
@@ -1754,11 +1776,11 @@
         const p = wsScene.perches[perchIdx];
         const el = document.createElement('div');
         el.className = 'ws-bird spawning';
-        el.innerHTML = `<div class="ws-shadow"></div><div class="ws-body"><img src="${escapeHtml(pick.species.thumb)}" alt=""></div><span class="ws-name"></span>`;
+        el.innerHTML = `${WS_LEGS_SVG}<div class="ws-shadow"></div><div class="ws-body"><div class="ws-pose"><img src="${escapeHtml(pick.species.thumb)}" alt=""></div></div><span class="ws-name"></span>`;
         el.querySelector('.ws-name').textContent = speciesPrimary(pick.species);
         el.style.left = p.x + '%';
         el.style.top  = (p.y - 12) + '%';
-        const bird = { el, perch: perchIdx, pick, leaving: false, flushable: false };
+        const bird = { el, pose: el.querySelector('.ws-pose'), perch: perchIdx, pick, leaving: false, flushable: false };
         el.addEventListener('pointerdown', e => { e.preventDefault(); wsFlush(bird, true); });
         WS.stage.appendChild(el);
         WS.birds.push(bird);
@@ -1766,8 +1788,17 @@
         requestAnimationFrame(() => requestAnimationFrame(() => {
           el.classList.remove('spawning');
           el.style.top = p.y + '%';
-          setTimeout(() => { bird.flushable = true; }, 480);
+          setTimeout(() => { bird.flushable = true; wsHop(bird); }, 480);  // little touchdown hop
         }));
+      }
+
+      // restart the one-shot hop animation (landing / startle)
+      function wsHop(bird) {
+        const p = bird.pose;
+        if (!p) return;
+        p.classList.remove('hop');
+        void p.offsetWidth;   // force reflow so the animation can replay
+        p.classList.add('hop');
       }
 
       function wsMoveBird(bird, perchIdx) {
@@ -1777,6 +1808,7 @@
         bird.el.classList.toggle('flip', to.x < from.x);  // face travel direction
         bird.el.style.left = to.x + '%';
         bird.el.style.top  = to.y + '%';
+        wsHop(bird);   // a startled little hop as it relocates
       }
 
       // cursor proximity → birds hop to a free perch ("they scatter from you")
