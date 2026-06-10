@@ -547,5 +547,22 @@
     "rarity": "common",
     "thumb": "thumbs/2026-06-07_黑尾蜡嘴雀_1.jpg",
     "lifer": true
+  },
+  {
+    "id": "2026-06-10_栗背短脚鹎_001",
+    "date": "2026-06-10",
+    "time": "13:39",
+    "species_zh": "栗背短脚鹎",
+    "species_en": "Chestnut Bulbul",
+    "species_sci": "Hemixos castanonotus",
+    "family": "鹎科",
+    "family_en": "Bulbuls",
+    "area": "鄞州区",
+    "area_en": "Yinzhou District",
+    "city": "宁波",
+    "city_en": "Ningbo",
+    "rarity": "common",
+    "thumb": "thumbs/2026-06-10_栗背短脚鹎_1.jpg",
+    "lifer": true
   }
 ]
