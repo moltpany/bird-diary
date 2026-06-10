@@ -1171,6 +1171,27 @@
       };
       // GEO = { bbox, provinces, uk, ranges } — loaded from data/geo.json
       let GEO = null;
+      const MAP_W = 182, MAP_H = 162, MAP_PAD = 12;
+      // Populated by initGeoCache() after GEO loads: projectors and pre-built path strings
+      const PROJ_CACHE = {};  // country → {px, py}
+      const PATH_CACHE = {};  // 'China' → {provinceName: 'M…Z'}, 'UK' → ['M…Z', …]
+
+      function initGeoCache() {
+        if (!GEO?.bbox) return;
+        for (const country of ['China', 'UK']) {
+          if (!GEO.bbox[country]) continue;
+          const proj = makeProjector(GEO.bbox[country], MAP_W, MAP_H, MAP_PAD);
+          PROJ_CACHE[country] = proj;
+          if (country === 'China' && GEO.provinces) {
+            const paths = {};
+            for (const [name, ring] of Object.entries(GEO.provinces))
+              paths[name] = ringPath(ring, proj.px, proj.py);
+            PATH_CACHE['China'] = paths;
+          } else if (country === 'UK' && GEO.uk) {
+            PATH_CACHE['UK'] = GEO.uk.map(ring => ringPath(ring, proj.px, proj.py));
+          }
+        }
+      }
 
       // build a lat-corrected lon/lat → svg projector for a country bbox
       function makeProjector(bbox, W, H, PAD) {
@@ -1207,7 +1228,7 @@
         }
         const countries = Object.keys(byCountry).filter(c => c === 'China' || c === 'UK');
 
-        if (!GEO || !countries.length) {
+        if (!GEO?.bbox || !countries.length) {
           const locs = [...new Set(sightings.map(s => lang === 'en' ? (s.city_en || s.city) : s.city).filter(Boolean))].join(' · ');
           return `<div class="map-back-title"><span>${mapTitle}</span>${backBtn}</div>
             <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:14px;text-align:center;font-size:11px;color:var(--ink-secondary);letter-spacing:0.06em;">${escapeHtml(locs || '—')}</div>`;
@@ -1221,24 +1242,26 @@
         }
         const cities = Object.values(byCountry[country]);
 
-        const W = 182, H = 162, PAD = 12;
-        const { px, py } = makeProjector(GEO.bbox[country], W, H, PAD);
+        const { px, py } = PROJ_CACHE[country] || makeProjector(GEO.bbox[country], MAP_W, MAP_H, MAP_PAD);
 
-        // ── base map: provinces (China) or single outline (UK) ──
+        // ── base map: provinces (China) or single outline (UK) — use pre-built path cache ──
         let base = '';
         if (country === 'China') {
           const range = new Set(GEO.ranges[speciesName] || []);
+          const cachedPaths = PATH_CACHE['China'] || {};
           for (const [name, ring] of Object.entries(GEO.provinces)) {
             const hit = range.has(name);
             const fill = hit ? 'var(--royal)' : 'var(--paper-tab)';
             const op   = hit ? '0.5' : '1';
             const sw   = hit ? '0.6' : '0.4';
-            base += `<path d="${ringPath(ring, px, py)}" style="fill:${fill};stroke:var(--rule-soft)" fill-opacity="${op}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+            const d = cachedPaths[name] || ringPath(ring, px, py);
+            base += `<path d="${d}" style="fill:${fill};stroke:var(--rule-soft)" fill-opacity="${op}" stroke-width="${sw}" stroke-linejoin="round"/>`;
           }
         } else {
-          // UK: species here are resident throughout → fill the whole outline blue
-          for (const ring of GEO.uk) {
-            base += `<path d="${ringPath(ring, px, py)}" style="fill:var(--royal);stroke:var(--rule-soft)" fill-opacity="0.5" stroke-width="0.6" stroke-linejoin="round"/>`;
+          // UK: fill the whole outline blue; use cached path strings
+          const cachedPaths = PATH_CACHE['UK'] || GEO.uk.map(ring => ringPath(ring, px, py));
+          for (const d of cachedPaths) {
+            base += `<path d="${d}" style="fill:var(--royal);stroke:var(--rule-soft)" fill-opacity="0.5" stroke-width="0.6" stroke-linejoin="round"/>`;
           }
         }
 
@@ -1304,6 +1327,7 @@
         }
         GEO = geoResult.status === 'fulfilled' ? geoResult.value : null;
         PORTRAITS = (portraitsResult.status === 'fulfilled' && portraitsResult.value) || {};
+        initGeoCache();
         birdSightings   = allSightings.filter(s => (s.kind || 'bird') !== 'friend');
         friendSightings = allSightings.filter(s => s.kind === 'friend');
         speciesMap = buildMap(birdSightings);
@@ -1505,23 +1529,38 @@
           </div>`;
         front.appendChild(body);
 
-        // touch-friendly flip toggle (footer map icon)
-        const mapToggle = body.querySelector('.card-map-toggle');
-        mapToggle.addEventListener('click', e => { e.stopPropagation(); card.classList.toggle('flipped'); });
-
-        // ── BACK (distribution map) ──
+        // ── BACK (distribution map, built lazily on first flip) ──
         const back = document.createElement('div');
         back.className = 'card-back';
-        back.innerHTML = buildMapSvg(sightings, name, true);
-        const backBtn = back.querySelector('.flip-back-btn');
-        if (backBtn) backBtn.addEventListener('click', e => { e.stopPropagation(); card.classList.remove('flipped'); });
+        let backBuilt = false;
+        const buildBack = () => {
+          if (backBuilt) return;
+          backBuilt = true;
+          back.innerHTML = buildMapSvg(sightings, name, true);
+          const backBtn = back.querySelector('.flip-back-btn');
+          if (backBtn) backBtn.addEventListener('click', e => { e.stopPropagation(); card.classList.remove('flipped'); });
+        };
+
+        // touch: map icon toggles .flipped; desktop: mouseenter pre-builds (hover will flip via CSS)
+        const mapToggle = body.querySelector('.card-map-toggle');
+        mapToggle.addEventListener('click', e => { e.stopPropagation(); buildBack(); card.classList.toggle('flipped'); });
+        card.addEventListener('mouseenter', buildBack, { once: true });
+
+        // On hover-capable devices, clear .flipped when the mouse leaves so the card is
+        // clickable again (detail panel) — touch devices have no mouseleave so .flipped persists
+        inner.addEventListener('mouseleave', () => card.classList.remove('flipped'));
 
         inner.appendChild(front);
         inner.appendChild(back);
         card.appendChild(inner);
 
         card.addEventListener('click', () => { if (!card.classList.contains('flipped')) openDetailPanel(name); });
-        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetailPanel(name); } });
+        card.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (!card.classList.contains('flipped')) openDetailPanel(name);
+          }
+        });
         return card;
       }
 
@@ -1553,9 +1592,16 @@
         document.getElementById('detail-sci').textContent = species.species_sci || '';
 
         const photo = document.getElementById('detail-photo');
-        photo.onerror = () => { photo.style.display = 'none'; };
-        if (species.thumb) { photo.src = species.thumb; photo.alt = name; photo.style.display = ''; }
-        else { photo.style.display = 'none'; }
+        if (species.thumb) {
+          const expectedSrc = species.thumb;
+          photo.onerror = () => { if (photo.getAttribute('src') === expectedSrc) photo.style.display = 'none'; };
+          photo.src = expectedSrc;
+          photo.alt = name;
+          photo.style.display = '';
+        } else {
+          photo.onerror = null;
+          photo.style.display = 'none';
+        }
 
         const dict = t();
         const otherName = lang === 'zh'
