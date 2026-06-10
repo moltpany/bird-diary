@@ -733,16 +733,32 @@
         text-align: center; padding: 24px; font-size: 12px; color: var(--ink-secondary);
         letter-spacing: 0.06em; line-height: 1.7;
       }
-      /* shop decorations on the sill */
+      /* placed shop items — anchored so the emoji's base sits at (x,y) */
       .ws-decor {
-        position: absolute; transform: translateX(-50%); font-size: 27px; line-height: 1;
+        position: absolute; transform: translate(-50%, -100%); font-size: 28px; line-height: 1;
         z-index: 1; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(18,39,102,0.25));
       }
-      .ws-decor.sway { transform-origin: 50% 0; animation: wsSway 3.6s ease-in-out infinite; }
-      @keyframes wsSway {
-        0%, 100% { transform: translateX(-50%) rotate(-5deg); }
-        50%      { transform: translateX(-50%) rotate(5deg); }
+      .ws-decor.big { font-size: 52px; }
+      /* placement mode: ghost preview follows the pointer */
+      .ws-stage.placing { cursor: crosshair; }
+      .ws-ghost {
+        position: absolute; display: none; transform: translate(-50%, -100%);
+        font-size: 28px; line-height: 1; opacity: 0.55; pointer-events: none; z-index: 6;
+        filter: drop-shadow(0 3px 4px rgba(18,39,102,0.3));
       }
+      .ws-ghost.big { font-size: 52px; }
+      .ws-placebar {
+        position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+        z-index: 7; display: flex; align-items: center; gap: 10px; max-width: 94%;
+        background: var(--royal); color: #fff; font-size: 11px; letter-spacing: 0.04em;
+        padding: 5px 6px 5px 12px; border-radius: 3px; box-shadow: 0 6px 18px -10px rgba(0,0,0,0.5);
+      }
+      html.dark .ws-placebar { color: var(--ink-bg); }
+      .ws-placebar-cancel {
+        flex-shrink: 0; background: rgba(255,255,255,0.18); color: inherit; border: 1px solid currentColor;
+        font-family: inherit; font-size: 10px; letter-spacing: 0.06em; padding: 3px 9px; cursor: pointer;
+      }
+      .si-count { margin-left: auto; font-size: 10px; color: var(--rare-common); }
       .ws-bird {
         position: absolute; width: 54px; height: 54px; z-index: 2;
         margin-left: -27px; margin-top: -50px;   /* anchor point = feet */
@@ -1065,8 +1081,9 @@
           wsEmpty: '还没有鸟可以停在窗台上。<br>拍到第一只鸟，它就会飞来这里。',
           wsHint: '点「📷 拍照」进入取景 · 把鸟框进快门拍下，收藏家按稀有度收购照片换金币 · 点一下鸟可把它惊飞',
           navGame: '🪟 窗台',
-          wsShop: '🛒 商店', wsShopBuy: '买', wsShopOwned: '已拥有',
+          wsShop: '🛒 商店', wsShopBuy: '买', wsShopPlace: '摆放', wsShopOwned: '已拥有',
           wsCam: '📷 拍照', wsNew: '📸 新物种!', wsMiss: '扑空', wsView: '观看这只鸟 →',
+          wsCancel: '取消', wsPlaceHint: n => `点击场景放置「${n}」 · 鸟会被吸引过来`,
         },
         en: {
           docTitle: 'Bird Diary · 鸟类图鉴',
@@ -1100,8 +1117,9 @@
           wsEmpty: 'No birds to perch on the sill yet.<br>Photograph your first bird and it will fly in.',
           wsHint: 'Tap “📷 camera”, frame a bird and hit the shutter — a collector buys your photos for coins by rarity · click a bird to flush it',
           navGame: '🪟 windowsill',
-          wsShop: '🛒 shop', wsShopBuy: 'buy', wsShopOwned: 'owned',
+          wsShop: '🛒 shop', wsShopBuy: 'buy', wsShopPlace: 'place', wsShopOwned: 'owned',
           wsCam: '📷 camera', wsNew: '📸 New!', wsMiss: 'missed', wsView: 'view this bird →',
+          wsCancel: 'cancel', wsPlaceHint: n => `Tap the scene to place “${n}” · birds will be drawn to it`,
         },
       };
       const RARITY_EN = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', very_rare: 'Very Rare', domestic: 'Domestic' };
@@ -1807,22 +1825,42 @@
         birds: [], pool: [], started: false, cameraOn: false,
         maxBirds: 4, baseBirds: 4, spawnBoost: false, rareBoost: false, payoutMult: 1,
         coins:    parseInt(localStorage.getItem('bd-ws-coins')    || '0', 10) || 0,
-        owned:        new Set(JSON.parse(localStorage.getItem('bd-ws-owned') || '[]')),
+        placed:       JSON.parse(localStorage.getItem('bd-ws-placed')    || '[]'),   // [{id,x,y}]
+        upgrades:     new Set(JSON.parse(localStorage.getItem('bd-ws-upgrades') || '[]')),
         photographed: new Set(JSON.parse(localStorage.getItem('bd-ws-photographed') || '[]')),
+        perches: [], placing: null,
       };
 
-      // ── shop catalog: coin-bought upgrades that each change a mechanic (no
-      //    pure decorations). `effect`: 'rate' = birds visit more often,
-      //    'capacity' = +1 perch (more birds at once), 'rarity' = rarer birds
-      //    visit more, 'payout' = more coins per photo. Items with an x/bottom
-      //    also render on the sill (stage-percent); 'lens' is gear, not placed. ──
+      // ── shop catalog ──
+      //  kind 'place' = buy then tap the scene to position it; creates an
+      //    attraction zone (`draws` = what clusters near it) and may add
+      //    perches / capacity / spawn-rate / rarity pull. Buyable repeatedly.
+      //  kind 'upgrade' = one-time global effect (not placed).
       const SHOP_ITEMS = [
-        { id: 'feeder', icon: '🌾', zh: '喂食器',   en: 'Feeder',         cost: 30, x: 64, bottom: 2, effect: 'rate',     effZh: '鸟来得更勤',       effEn: 'birds visit more often' },
-        { id: 'nest',   icon: '🪺', zh: '鸟窝',     en: 'Nest',           cost: 45, x: 33, bottom: 2, effect: 'capacity', effZh: '+1 停留位',         effEn: '+1 perch' },
-        { id: 'shrub',  icon: '🌳', zh: '灌木丛',   en: 'Shrub',          cost: 60, x: 8,  bottom: 2, effect: 'capacity', effZh: '+1 停留位',         effEn: '+1 perch' },
-        { id: 'bath',   icon: '🛁', zh: '水盆',     en: 'Bird Bath',      cost: 75, x: 90, bottom: 2, effect: 'rarity',   effZh: '更易招来稀有鸟',     effEn: 'rarer birds visit more' },
-        { id: 'lens',   icon: '🔭', zh: '长焦镜头', en: 'Telephoto Lens', cost: 90,                  effect: 'payout',   effZh: '每张照片金币 +50%', effEn: '+50% coins per photo' },
+        { id: 'tree',   icon: '🌳', zh: '树',       en: 'Tree',           cost: 40, kind: 'place', draws: 'bird',   perches: 2, capacity: 1, big: true, effZh: '吸引鸟 · +1 停留位',  effEn: 'draws birds · +1 perch' },
+        { id: 'feeder', icon: '🌾', zh: '喂食器',   en: 'Feeder',         cost: 28, kind: 'place', draws: 'bird',   perches: 1, rate: true,  effZh: '吸引鸟 · 来得更勤',   effEn: 'draws birds · visit more' },
+        { id: 'nest',   icon: '🪺', zh: '鸟巢',     en: 'Nest',           cost: 32, kind: 'place', draws: 'bird',   perches: 1, capacity: 1, effZh: '吸引鸟 · +1 停留位',  effEn: 'draws birds · +1 perch' },
+        { id: 'flower', icon: '🌸', zh: '花',       en: 'Flowers',        cost: 18, kind: 'place', draws: 'friend', perches: 1,              effZh: '吸引蝴蝶等',          effEn: 'draws butterflies' },
+        { id: 'bath',   icon: '🛁', zh: '水盆',     en: 'Bird Bath',      cost: 55, kind: 'place', draws: 'bird',   perches: 1, rarity: true, effZh: '更易招来稀有鸟',      effEn: 'rarer birds visit' },
+        { id: 'lens',   icon: '🔭', zh: '长焦镜头', en: 'Telephoto Lens', cost: 90, kind: 'upgrade', payout: true,                          effZh: '每张照片金币 +50%',  effEn: '+50% coins per photo' },
       ];
+
+      // one-time migration from the old single-owned model → placed instances
+      (function wsMigrateOwned() {
+        if (localStorage.getItem('bd-ws-placed') != null) return;
+        const old = JSON.parse(localStorage.getItem('bd-ws-owned') || '[]');
+        if (!old.length) return;
+        const slots = [{ x: 64, y: 60 }, { x: 33, y: 60 }, { x: 8, y: 60 }, { x: 90, y: 60 }];
+        old.forEach((id, i) => {
+          if (id === 'lens') { WS.upgrades.add('lens'); return; }
+          const mapped = id === 'shrub' ? 'tree' : id;
+          if (SHOP_ITEMS.some(it => it.id === mapped && it.kind === 'place')) {
+            WS.placed.push({ id: mapped, ...(slots[i % slots.length]) });
+          }
+        });
+        localStorage.setItem('bd-ws-placed', JSON.stringify(WS.placed));
+        localStorage.setItem('bd-ws-upgrades', JSON.stringify([...WS.upgrades]));
+      })();
 
       // rarity → spawn weight (rarer appears less often) + coins paid per photo
       const WS_RARITY = {
@@ -1834,14 +1872,58 @@
       };
       function wsRarityInfo(r) { return WS_RARITY[r] || WS_RARITY.common; }
 
-      // swappable scene config — perches are {x,y} in stage-percent (feet land there)
+      // swappable scene config — `base` perches are the default sill spots
+      // (draws:null = neutral). Placed shop items add their own attractor
+      // perches (draws:'bird'|'friend') so creatures cluster around them.
       const SCENES = {
-        windowsill: { perches: [
+        windowsill: { base: [
           { x: 11, y: 55 }, { x: 24, y: 57 }, { x: 37, y: 54 }, { x: 50, y: 57 },
           { x: 63, y: 54 }, { x: 76, y: 57 }, { x: 89, y: 55 },
         ] },
       };
       let wsScene = SCENES.windowsill;
+
+      const wsClamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+      // perches a placed item contributes (birds perch up in a tree's canopy,
+      // right at low items like feeders / flowers)
+      function wsItemPerches(item, inst) {
+        const n = item.perches || 1;
+        const dy = item.id === 'tree' ? -22 : -2;
+        const out = [];
+        for (let i = 0; i < n; i++) {
+          const dx = n === 1 ? 0 : (i / (n - 1) - 0.5) * 16;
+          out.push({ x: wsClamp(inst.x + dx, 4, 96), y: wsClamp(inst.y + dy, 12, 64), draws: item.draws });
+        }
+        return out;
+      }
+
+      // rebuild the live perch list = base sill + every placed attractor's perches
+      function wsBuildPerches() {
+        const list = wsScene.base.map(p => ({ x: p.x, y: p.y, draws: null }));
+        for (const inst of WS.placed) {
+          const item = SHOP_ITEMS.find(i => i.id === inst.id);
+          if (item) list.push(...wsItemPerches(item, inst));
+        }
+        WS.perches = list;
+      }
+
+      // a perch is free if no active bird is standing on/near it
+      function wsPerchFree(p) {
+        return !WS.birds.some(b => !b.leaving && Math.hypot(b.x - p.x, (b.y - p.y) * 1.4) < 7);
+      }
+
+      // pick a landing perch, biased toward attractors matching the creature
+      function wsPickPerch(isFriend) {
+        const free = WS.perches.filter(wsPerchFree);
+        if (!free.length) return null;
+        const want = isFriend ? 'friend' : 'bird';
+        const matching = free.filter(p => p.draws === want);
+        if (matching.length && Math.random() < 0.82) return matching[Math.floor(Math.random() * matching.length)];
+        const generic = free.filter(p => p.draws == null);
+        const pool = generic.length ? generic : free;
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
 
       // twig legs drawn under each bird's photo (CSS-colored via currentColor)
       const WS_LEGS_SVG = `<svg class="ws-legs" viewBox="0 0 16 8" aria-hidden="true"><path d="M6 0 L6 6 M3.5 7.5 L6 6 L8.5 7.5 M10 0 L10 6 M7.5 7.5 L10 6 L12.5 7.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -1885,18 +1967,11 @@
         return WS.pool[WS.pool.length - 1];
       }
 
-      function wsFreePerch() {
-        const used = new Set(WS.birds.filter(b => !b.leaving).map(b => b.perch));
-        const free = wsScene.perches.map((_, i) => i).filter(i => !used.has(i));
-        return free.length ? free[Math.floor(Math.random() * free.length)] : -1;
-      }
-
       function wsSpawn() {
         if (!WS.pool.length) return;
-        const perchIdx = wsFreePerch();
-        if (perchIdx < 0) return;
         const pick = wsPick();
-        const p = wsScene.perches[perchIdx];
+        const p = wsPickPerch(pick.isFriend);
+        if (!p) return;
         // prefer an AI-generated 2D portrait if this species has one; else the photo
         const portrait = PORTRAITS[pick.name];
         const imgSrc = portrait || pick.species.thumb;
@@ -1906,9 +1981,9 @@
         el.querySelector('.ws-name').textContent = speciesPrimary(pick.species);
         el.style.left = p.x + '%';
         el.style.top  = (p.y - 12) + '%';
-        const bird = { el, pose: el.querySelector('.ws-pose'), perch: perchIdx, pick, leaving: false, flushable: false, photographed: false };
+        const bird = { el, pose: el.querySelector('.ws-pose'), x: p.x, y: p.y, pick, leaving: false, flushable: false, photographed: false };
         // click a bird to scare it off (camera mode lets the shutter handle it)
-        el.addEventListener('pointerdown', e => { if (WS.cameraOn) return; e.stopPropagation(); wsScare(bird); });
+        el.addEventListener('pointerdown', e => { if (WS.cameraOn || WS.placing) return; e.stopPropagation(); wsScare(bird); });
         WS.stage.appendChild(el);
         WS.birds.push(bird);
         // settle onto the perch on the next frame (triggers the fly-in transition)
@@ -1938,6 +2013,7 @@
 
       // ── camera mode ──
       function wsSetCamera(on) {
+        if (on && WS.placing) wsCancelPlacing();   // camera and placement are exclusive
         WS.cameraOn = on;
         WS.stage.classList.toggle('cam-on', on);
         const btn = document.getElementById('ws-cam-btn');
@@ -1981,7 +2057,7 @@
       // straight to that bird's field-guide profile (the "view bird" loop).
       function wsPhotograph(bird) {
         bird.photographed = true;
-        const p = wsScene.perches[bird.perch];
+        const p = { x: bird.x, y: bird.y };
         const info = wsRarityInfo(bird.pick.isFriend ? 'rare' : bird.pick.species.rarity);
         const isNew = !WS.photographed.has(bird.pick.name);
         let coins = Math.round(info.coins * WS.payoutMult);
@@ -2052,22 +2128,24 @@
 
       // ── shop ──
       function wsItemName(item) { return lang === 'zh' ? item.zh : item.en; }
-      function wsItemEffect(item) { return item.effect ? (lang === 'zh' ? item.effZh : item.effEn) : ''; }
+      function wsItemEffect(item) { return lang === 'zh' ? item.effZh : item.effEn; }
 
       function wsRenderShop() {
         const grid = document.getElementById('ws-shop-grid');
         if (!grid) return;
         grid.innerHTML = '';
         for (const item of SHOP_ITEMS) {
-          const owned = WS.owned.has(item.id);
+          const isUpgrade = item.kind === 'upgrade';
+          const owned = isUpgrade && WS.upgrades.has(item.id);
+          const count = isUpgrade ? 0 : WS.placed.filter(p => p.id === item.id).length;
           const afford = WS.coins >= item.cost;
           const card = document.createElement('div');
           card.className = 'ws-shop-item' + (owned ? ' owned' : '');
           const btn = owned
             ? `<button class="ws-shop-buy owned-tag" disabled>✓ ${escapeHtml(t().wsShopOwned)}</button>`
-            : `<button class="ws-shop-buy" data-id="${item.id}"${afford ? '' : ' disabled'}>🪙 ${item.cost} · ${escapeHtml(t().wsShopBuy)}</button>`;
+            : `<button class="ws-shop-buy" data-id="${item.id}"${afford ? '' : ' disabled'}>🪙 ${item.cost} · ${escapeHtml(isUpgrade ? t().wsShopBuy : t().wsShopPlace)}</button>`;
           card.innerHTML = `
-            <div class="si-top"><span class="si-icon">${item.icon}</span><span class="si-name">${escapeHtml(wsItemName(item))}</span></div>
+            <div class="si-top"><span class="si-icon">${item.icon}</span><span class="si-name">${escapeHtml(wsItemName(item))}</span>${count ? `<span class="si-count">×${count}</span>` : ''}</div>
             <span class="si-effect">${escapeHtml(wsItemEffect(item))}</span>
             ${btn}`;
           const buyBtn = card.querySelector('.ws-shop-buy[data-id]');
@@ -2077,35 +2155,95 @@
       }
 
       function wsBuy(item) {
-        if (WS.owned.has(item.id) || WS.coins < item.cost) return;
-        WS.coins -= item.cost;
-        WS.owned.add(item.id);
-        localStorage.setItem('bd-ws-coins', WS.coins);
-        localStorage.setItem('bd-ws-owned', JSON.stringify([...WS.owned]));
-        wsUpdateHud();
-        wsApplyDecor();
-        wsRenderShop();
+        if (WS.coins < item.cost) return;
+        if (item.kind === 'upgrade') {
+          if (WS.upgrades.has(item.id)) return;
+          WS.coins -= item.cost;
+          WS.upgrades.add(item.id);
+          localStorage.setItem('bd-ws-coins', WS.coins);
+          localStorage.setItem('bd-ws-upgrades', JSON.stringify([...WS.upgrades]));
+          wsUpdateHud(); wsRecompute(); wsRenderShop();
+          return;
+        }
+        // placeable: charge on placement, not on click → enter placement mode
+        wsStartPlacing(item);
       }
 
-      // render owned decorations onto the stage + recompute their mechanics
-      function wsApplyDecor() {
+      // ── placement mode: a ghost follows the pointer; tap the scene to drop ──
+      function wsStartPlacing(item) {
+        wsSetCamera(false);
+        WS.placing = item;
+        WS.stage.classList.add('placing');
+        document.getElementById('ws-shop').setAttribute('hidden', '');
+        document.getElementById('ws-shop-btn').setAttribute('aria-expanded', 'false');
+        if (!WS.ghost) { WS.ghost = document.createElement('div'); WS.ghost.className = 'ws-ghost'; WS.stage.appendChild(WS.ghost); }
+        WS.ghost.textContent = item.icon;
+        WS.ghost.classList.toggle('big', !!item.big);
+        WS.ghost.style.display = 'block';
+        wsShowPlaceBar(item);
+      }
+
+      function wsCancelPlacing() {
+        WS.placing = null;
+        WS.stage.classList.remove('placing');
+        if (WS.ghost) WS.ghost.style.display = 'none';
+        const bar = WS.stage.querySelector('.ws-placebar');
+        if (bar) bar.remove();
+      }
+
+      function wsPlaceAt(xPct, yPct) {
+        const item = WS.placing;
+        if (!item || WS.coins < item.cost) { wsCancelPlacing(); return; }
+        WS.coins -= item.cost;
+        WS.placed.push({ id: item.id, x: wsClamp(xPct, 5, 95), y: wsClamp(yPct, 24, 66) });
+        localStorage.setItem('bd-ws-coins', WS.coins);
+        localStorage.setItem('bd-ws-placed', JSON.stringify(WS.placed));
+        wsCancelPlacing();
+        wsUpdateHud(); wsRenderPlaced(); wsBuildPerches(); wsRecompute(); wsRenderShop();
+      }
+
+      function wsShowPlaceBar(item) {
+        let bar = WS.stage.querySelector('.ws-placebar');
+        if (bar) bar.remove();
+        bar = document.createElement('div');
+        bar.className = 'ws-placebar';
+        const label = document.createElement('span');
+        label.textContent = t().wsPlaceHint(wsItemName(item));
+        const cancel = document.createElement('button');
+        cancel.className = 'ws-placebar-cancel';
+        cancel.textContent = t().wsCancel;
+        cancel.addEventListener('click', e => { e.stopPropagation(); wsCancelPlacing(); });
+        bar.append(label, cancel);
+        WS.stage.appendChild(bar);
+      }
+
+      // render placed items on the stage (anchored so the base sits at x,y)
+      function wsRenderPlaced() {
         if (!WS.stage) return;
         WS.stage.querySelectorAll('.ws-decor').forEach(e => e.remove());
-        for (const item of SHOP_ITEMS) {
-          if (!WS.owned.has(item.id) || item.x == null) continue;  // lens is gear, not placed
+        for (const inst of WS.placed) {
+          const item = SHOP_ITEMS.find(i => i.id === inst.id);
+          if (!item) continue;
           const d = document.createElement('div');
-          d.className = 'ws-decor';
+          d.className = 'ws-decor' + (item.big ? ' big' : '');
           d.textContent = item.icon;
-          d.style.left = item.x + '%';
-          d.style.bottom = (item.bottom || 2) + '%';
+          d.style.left = inst.x + '%';
+          d.style.top  = inst.y + '%';
           d.setAttribute('aria-hidden', 'true');
           WS.stage.appendChild(d);
         }
-        const extraPerch = SHOP_ITEMS.filter(i => i.effect === 'capacity' && WS.owned.has(i.id)).length;
-        WS.maxBirds   = Math.min(WS.baseBirds + extraPerch, wsScene.perches.length);
-        WS.spawnBoost = SHOP_ITEMS.some(i => i.effect === 'rate'   && WS.owned.has(i.id));
-        WS.rareBoost  = SHOP_ITEMS.some(i => i.effect === 'rarity' && WS.owned.has(i.id));
-        WS.payoutMult = SHOP_ITEMS.some(i => i.effect === 'payout' && WS.owned.has(i.id)) ? 1.5 : 1;
+      }
+
+      // recompute mechanics from placed items + upgrades
+      function wsRecompute() {
+        const cap = WS.placed.reduce((s, inst) => {
+          const it = SHOP_ITEMS.find(i => i.id === inst.id);
+          return s + (it && it.capacity ? it.capacity : 0);
+        }, 0);
+        WS.maxBirds   = Math.min(WS.baseBirds + cap, (WS.perches || []).length || 99);
+        WS.spawnBoost = WS.placed.some(p => (SHOP_ITEMS.find(i => i.id === p.id) || {}).rate);
+        WS.rareBoost  = WS.placed.some(p => (SHOP_ITEMS.find(i => i.id === p.id) || {}).rarity);
+        WS.payoutMult = WS.upgrades.has('lens') ? 1.5 : 1;
       }
 
       function wsShowEmpty() {
@@ -2140,7 +2278,9 @@
           shopBtn.setAttribute('aria-expanded', String(open));
         });
         wsRenderShop();
-        wsApplyDecor();   // sets maxBirds / spawnBoost / rareBoost / payoutMult from owned items
+        wsRenderPlaced();   // draw already-placed items
+        wsBuildPerches();   // base sill + attractor perches
+        wsRecompute();      // maxBirds / spawnBoost / rareBoost / payoutMult
 
         // camera: viewfinder follows the pointer; shutter on pointerdown
         WS.viewfinder = document.createElement('div');
@@ -2149,24 +2289,32 @@
         WS.flash.className = 'ws-flash';
         WS.stage.append(WS.viewfinder, WS.flash);
         document.getElementById('ws-cam-btn').addEventListener('click', () => wsSetCamera(!WS.cameraOn));
-        WS.stage.addEventListener('pointermove', e => {
-          if (!WS.cameraOn) return;
+        const stagePct = e => {
           const r = WS.stage.getBoundingClientRect();
-          WS.viewfinder.style.left = (e.clientX - r.left) + 'px';
-          WS.viewfinder.style.top  = (e.clientY - r.top)  + 'px';
+          return { x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100, px: e.clientX - r.left, py: e.clientY - r.top };
+        };
+        WS.stage.addEventListener('pointermove', e => {
+          if (WS.placing && WS.ghost) { const c = stagePct(e); WS.ghost.style.left = c.px + 'px'; WS.ghost.style.top = c.py + 'px'; return; }
+          if (!WS.cameraOn) return;
+          const c = stagePct(e);
+          WS.viewfinder.style.left = c.px + 'px';
+          WS.viewfinder.style.top  = c.py + 'px';
         });
         WS.stage.addEventListener('pointerdown', e => {
+          if (WS.placing) { e.preventDefault(); const c = stagePct(e); wsPlaceAt(c.x, c.y); return; }
           if (!WS.cameraOn) return;
           e.preventDefault();
-          WS.viewfinder.style.left = (e.clientX - WS.stage.getBoundingClientRect().left) + 'px';
-          WS.viewfinder.style.top  = (e.clientY - WS.stage.getBoundingClientRect().top)  + 'px';
+          const c = stagePct(e);
+          WS.viewfinder.style.left = c.px + 'px';
+          WS.viewfinder.style.top  = c.py + 'px';
           wsShutter(e.clientX, e.clientY);
         });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && WS.placing) wsCancelPlacing(); });
 
         WS.pool = wsBuildPool();
         if (!WS.pool.length) { wsShowEmpty(); return; }
         WS.started = true;
-        const n = Math.min(WS.maxBirds, wsScene.perches.length);
+        const n = Math.min(WS.maxBirds, WS.perches.length);
         for (let i = 0; i < n; i++) setTimeout(wsSpawn, i * 420);
         setInterval(wsTick, 1600);
       }
