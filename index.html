@@ -810,6 +810,22 @@
       }
       .ws-float.feather { color: var(--ink-secondary); }
       .ws-float.muted { color: var(--ink-faint); font-weight: 400; }
+      /* capture toast: "📸 photographed X · [view]" → jumps to the guide profile */
+      .ws-toast {
+        position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+        z-index: 6; display: flex; align-items: center; gap: 10px; max-width: 92%;
+        background: var(--paper); border: 1px solid var(--royal);
+        padding: 6px 8px 6px 12px; font-size: 12px; color: var(--ink-primary);
+        box-shadow: 0 8px 22px -12px rgba(18,39,102,0.5); animation: wsToastIn 0.22s ease;
+      }
+      .ws-toast-view {
+        flex-shrink: 0; background: var(--royal); color: #fff; border: 1px solid var(--royal);
+        font-family: inherit; font-size: 10.5px; letter-spacing: 0.04em;
+        padding: 4px 10px; cursor: pointer; transition: opacity 0.15s;
+      }
+      html.dark .ws-toast-view { color: var(--ink-bg); }
+      .ws-toast-view:hover { opacity: 0.85; }
+      @keyframes wsToastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
       @keyframes wsFloat {
         0% { opacity: 0; transform: translate(-50%, 0) scale(0.8); }
         20% { opacity: 1; transform: translate(-50%, -10px) scale(1); }
@@ -871,7 +887,7 @@
       @media (max-width: 600px) { .ws-viewfinder { width: 108px; height: 82px; } }
       @media (prefers-reduced-motion: reduce) {
         /* no bird animations and, importantly, no full-screen shutter flash */
-        .ws-bird .ws-body, .ws-bird .ws-pose.hop, .ws-flash.fire { animation: none; }
+        .ws-bird .ws-body, .ws-bird .ws-pose.hop, .ws-flash.fire, .ws-toast { animation: none; }
         .ws-bird { transition: opacity 0.2s; animation-duration: 0.01ms; }
         .ws-float { animation: none; }   /* stay visible (no rise/fade) until JS removes it */
       }
@@ -933,7 +949,6 @@
         <div class="ws-head">
           <span class="ws-title" data-i18n="wsTitle">// 窗台 · the windowsill</span>
           <div class="ws-hud">
-            <span class="ws-stat">🪶 <b id="ws-feathers">0</b> <span data-i18n="wsFeathers">羽毛</span></span>
             <span class="ws-stat">🪙 <b id="ws-coins">0</b> <span data-i18n="wsCoins">金币</span></span>
             <button class="mode-btn ws-cam-btn" id="ws-cam-btn" data-i18n="wsCam" aria-pressed="false">📷 拍照</button>
             <button class="mode-btn ws-shop-btn" id="ws-shop-btn" data-i18n="wsShop" aria-expanded="false" aria-controls="ws-shop">🛒 商店</button>
@@ -1048,10 +1063,10 @@
           wsTitle: '// 窗台 · the windowsill',
           wsFeathers: '羽毛', wsCoins: '金币',
           wsEmpty: '还没有鸟可以停在窗台上。<br>拍到第一只鸟，它就会飞来这里。',
-          wsHint: '点「📷 拍照」进入取景 · 把鸟框进取景框按下快门，商家按稀有度收购照片换金币',
+          wsHint: '点「📷 拍照」进入取景 · 把鸟框进快门拍下，收藏家按稀有度收购照片换金币 · 点一下鸟可把它惊飞',
           navGame: '🪟 窗台',
           wsShop: '🛒 商店', wsShopBuy: '买', wsShopOwned: '已拥有',
-          wsCam: '📷 拍照', wsNew: '📸 新物种!', wsMiss: '扑空',
+          wsCam: '📷 拍照', wsNew: '📸 新物种!', wsMiss: '扑空', wsView: '观看这只鸟 →',
         },
         en: {
           docTitle: 'Bird Diary · 鸟类图鉴',
@@ -1083,10 +1098,10 @@
           wsTitle: '// the windowsill · 窗台',
           wsFeathers: 'feathers', wsCoins: 'coins',
           wsEmpty: 'No birds to perch on the sill yet.<br>Photograph your first bird and it will fly in.',
-          wsHint: 'Tap “📷 camera”, frame a bird in the viewfinder and hit the shutter — a collector buys your photos for coins by rarity',
+          wsHint: 'Tap “📷 camera”, frame a bird and hit the shutter — a collector buys your photos for coins by rarity · click a bird to flush it',
           navGame: '🪟 windowsill',
           wsShop: '🛒 shop', wsShopBuy: 'buy', wsShopOwned: 'owned',
-          wsCam: '📷 camera', wsNew: '📸 New!', wsMiss: 'missed',
+          wsCam: '📷 camera', wsNew: '📸 New!', wsMiss: 'missed', wsView: 'view this bird →',
         },
       };
       const RARITY_EN = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', very_rare: 'Very Rare', domestic: 'Domestic' };
@@ -1778,19 +1793,20 @@
         });
       });
 
-      // ─── windowsill · interactive scene (game prototype) ───
+      // ─── windowsill · interactive scene (a living extension of the guide) ───
       // Photographed species perch on the sill, weighted by rarity. Enter
       // camera mode and frame a bird in the viewfinder to "photograph" it — a
-      // collector buys the shot for coins (by rarity; new species pay a premium
-      // and yield a trophy feather). Coins buy shop upgrades that each change a
-      // mechanic. State persists in localStorage. The scene is data-driven via
+      // collector buys the shot for coins (by rarity; new species pay a premium).
+      // After a shot you can jump straight to that bird's field-guide profile.
+      // Clicking a bird (outside camera mode) scares it off. Coins buy shop
+      // upgrades that each change a mechanic. State persists in localStorage.
+      // The scene is data-driven via
       // SCENES so a garden / 3D view can slot in later without touching the loop.
       const WS = {
         stage: null, viewfinder: null, flash: null,
         birds: [], pool: [], started: false, cameraOn: false,
         maxBirds: 4, baseBirds: 4, spawnBoost: false, rareBoost: false, payoutMult: 1,
         coins:    parseInt(localStorage.getItem('bd-ws-coins')    || '0', 10) || 0,
-        feathers: parseInt(localStorage.getItem('bd-ws-feathers') || '0', 10) || 0,
         owned:        new Set(JSON.parse(localStorage.getItem('bd-ws-owned') || '[]')),
         photographed: new Set(JSON.parse(localStorage.getItem('bd-ws-photographed') || '[]')),
       };
@@ -1891,6 +1907,8 @@
         el.style.left = p.x + '%';
         el.style.top  = (p.y - 12) + '%';
         const bird = { el, pose: el.querySelector('.ws-pose'), perch: perchIdx, pick, leaving: false, flushable: false, photographed: false };
+        // click a bird to scare it off (camera mode lets the shutter handle it)
+        el.addEventListener('pointerdown', e => { if (WS.cameraOn) return; e.stopPropagation(); wsScare(bird); });
         WS.stage.appendChild(el);
         WS.birds.push(bird);
         // settle onto the perch on the next frame (triggers the fly-in transition)
@@ -1959,24 +1977,42 @@
       }
 
       // photograph a bird → collector pays coins (rarity-based); a brand-new
-      // species pays a premium and yields a trophy feather. Then it flies off.
+      // species pays a premium. Then it flies off, and a toast offers a jump
+      // straight to that bird's field-guide profile (the "view bird" loop).
       function wsPhotograph(bird) {
         bird.photographed = true;
         const p = wsScene.perches[bird.perch];
         const info = wsRarityInfo(bird.pick.isFriend ? 'rare' : bird.pick.species.rarity);
         const isNew = !WS.photographed.has(bird.pick.name);
         let coins = Math.round(info.coins * WS.payoutMult);
-        let feathers = 0;
         if (isNew) {
           WS.photographed.add(bird.pick.name);
           localStorage.setItem('bd-ws-photographed', JSON.stringify([...WS.photographed]));
           coins += Math.round(info.coins * 2 * WS.payoutMult);  // premium for a first
-          feathers = 1;                                          // trophy feather
         }
-        wsReward(p.x, p.y, coins, feathers);
+        wsReward(p.x, p.y, coins);
         if (isNew) wsFloat(p.x, p.y - 13, t().wsNew, false);
+        wsCaptureToast(bird.pick, isNew);
         wsHop(bird);
         setTimeout(() => wsFlush(bird), 360);   // startled by the shutter
+      }
+
+      // after a shot: "📸 photographed X · [view]" → opens the field-guide profile
+      function wsCaptureToast(pick, isNew) {
+        let toast = WS.stage.querySelector('.ws-toast');
+        if (toast) toast.remove();
+        toast = document.createElement('div');
+        toast.className = 'ws-toast';
+        const label = document.createElement('span');
+        label.textContent = (isNew ? t().wsNew + ' ' : '📸 ') + speciesPrimary(pick.species);
+        const view = document.createElement('button');
+        view.className = 'ws-toast-view';
+        view.textContent = t().wsView;
+        view.addEventListener('click', e => { e.stopPropagation(); openDetailPanel(pick.name); toast.remove(); });
+        toast.append(label, view);
+        WS.stage.appendChild(toast);
+        clearTimeout(WS._toastTimer);
+        WS._toastTimer = setTimeout(() => toast.remove(), 4200);
       }
 
       function wsMiss(clientX, clientY) {
@@ -1985,14 +2021,19 @@
         wsFloat((clientX - r.left) / r.width * 100, (clientY - r.top) / r.height * 100, t().wsMiss, false, true);
       }
 
-      function wsReward(xPct, yPct, coins, feathers) {
-        WS.coins += coins; WS.feathers += feathers;
+      // a bird is scared off by a click (no reward) — only when not aiming
+      function wsScare(bird) {
+        if (bird.leaving) return;
+        wsHop(bird);
+        setTimeout(() => wsFlush(bird), 110);
+      }
+
+      function wsReward(xPct, yPct, coins) {
+        WS.coins += coins;
         localStorage.setItem('bd-ws-coins', WS.coins);
-        localStorage.setItem('bd-ws-feathers', WS.feathers);
         wsUpdateHud();
         wsRenderShop();   // keep buy buttons' affordability in sync
         wsFloat(xPct, yPct, '+' + coins + ' 🪙', false);
-        if (feathers > 0) wsFloat(xPct, yPct - 5, '🪶 +' + feathers, true);
       }
 
       function wsFloat(xPct, yPct, text, isFeather, muted) {
@@ -2007,7 +2048,6 @@
 
       function wsUpdateHud() {
         document.getElementById('ws-coins').textContent = WS.coins;
-        document.getElementById('ws-feathers').textContent = WS.feathers;
       }
 
       // ── shop ──
