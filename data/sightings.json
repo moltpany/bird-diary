@@ -564,5 +564,40 @@
     "rarity": "common",
     "thumb": "thumbs/2026-06-10_栗背短脚鹎_1.jpg",
     "lifer": true
+  },
+  {
+    "id": "2026-06-10_夜鹭_002",
+    "date": "2026-06-10",
+    "time": "18:29",
+    "species_zh": "夜鹭",
+    "species_en": "Black-crowned Night Heron",
+    "species_sci": "Nycticorax nycticorax",
+    "family": "鹭科",
+    "family_en": "Herons",
+    "area": "鄞州区",
+    "area_en": "Yinzhou District",
+    "city": "宁波",
+    "city_en": "Ningbo",
+    "rarity": "common",
+    "thumb": "thumbs/2026-06-10_夜鹭_2.jpg",
+    "lifer": false,
+    "note": "亚成鸟，水池曝气装置上等待捕食"
+  },
+  {
+    "id": "2024-10-12_银鸥_001",
+    "date": "2024-10-12",
+    "time": "13:20",
+    "species_zh": "银鸥",
+    "species_en": "European Herring Gull",
+    "species_sci": "Larus argentatus",
+    "family": "鸥科",
+    "family_en": "Gulls",
+    "area": "多佛",
+    "area_en": "Dover",
+    "city": "英国",
+    "city_en": "UK",
+    "rarity": "common",
+    "thumb": "thumbs/2024-10-12_银鸥_1.jpg",
+    "lifer": true
   }
 ]
