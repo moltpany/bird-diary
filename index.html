@@ -1242,18 +1242,26 @@
         '杭州':  [120.15, 30.28, 'China'],
         'UK':    [-1.15, 52.95, 'UK'],
         '英国':  [-1.15, 52.95, 'UK'],
+        '奥地利': [16.37, 48.21, 'Austria'],
+        '维也纳': [16.37, 48.21, 'Austria'],
+      };
+      // country display names (zh / en) for the map title
+      const COUNTRY_NAMES = {
+        China:   { zh: '中国', en: 'China' },
+        UK:      { zh: '英国', en: 'UK' },
+        Austria: { zh: '奥地利', en: 'Austria' },
       };
       // GEO = { bbox, provinces, uk, ranges } — loaded from data/geo.json
       let GEO = null;
       const MAP_W = 182, MAP_H = 162, MAP_PAD = 12;
       // Populated by initGeoCache() after GEO loads: projectors and pre-built path strings
       const PROJ_CACHE = {};  // country → {px, py}
-      const PATH_CACHE = {};  // 'China' → {provinceName: 'M…Z'}, 'UK' → ['M…Z', …]
+      // China → {provinceName: 'M…Z'} (range-shaded); other countries → ['M…Z', …] (whole outline)
+      const PATH_CACHE = {};
 
       function initGeoCache() {
         if (!GEO?.bbox) return;
-        for (const country of ['China', 'UK']) {
-          if (!GEO.bbox[country]) continue;
+        for (const country of Object.keys(GEO.bbox)) {
           const proj = makeProjector(GEO.bbox[country], MAP_W, MAP_H, MAP_PAD);
           PROJ_CACHE[country] = proj;
           if (country === 'China' && GEO.provinces) {
@@ -1261,8 +1269,8 @@
             for (const [name, ring] of Object.entries(GEO.provinces))
               paths[name] = ringPath(ring, proj.px, proj.py);
             PATH_CACHE['China'] = paths;
-          } else if (country === 'UK' && GEO.uk) {
-            PATH_CACHE['UK'] = GEO.uk.map(ring => ringPath(ring, proj.px, proj.py));
+          } else if (GEO.outlines?.[country]) {
+            PATH_CACHE[country] = GEO.outlines[country].map(ring => ringPath(ring, proj.px, proj.py));
           }
         }
       }
@@ -1300,7 +1308,7 @@
           if (!byCountry[country][ck]) byCountry[country][ck] = { lon: meta[0], lat: meta[1], count: 0, label: lang === 'en' ? (s.city_en || ck) : ck };
           byCountry[country][ck].count++;
         }
-        const countries = Object.keys(byCountry).filter(c => c === 'China' || c === 'UK');
+        const countries = Object.keys(byCountry).filter(c => c === 'China' || GEO?.outlines?.[c]);
 
         if (!GEO?.bbox || !countries.length) {
           const locs = [...new Set(sightings.map(s => lang === 'en' ? (s.city_en || s.city) : s.city).filter(Boolean))].join(' · ');
@@ -1332,8 +1340,8 @@
             base += `<path d="${d}" style="fill:${fill};stroke:var(--rule-soft)" fill-opacity="${op}" stroke-width="${sw}" stroke-linejoin="round"/>`;
           }
         } else {
-          // UK: fill the whole outline blue; use cached path strings
-          const cachedPaths = PATH_CACHE['UK'] || GEO.uk.map(ring => ringPath(ring, px, py));
+          // other countries: fill the whole outline blue; use cached path strings
+          const cachedPaths = PATH_CACHE[country] || (GEO.outlines?.[country] || []).map(ring => ringPath(ring, px, py));
           for (const d of cachedPaths) {
             base += `<path d="${d}" style="fill:var(--royal);stroke:var(--rule-soft)" fill-opacity="0.5" stroke-width="0.6" stroke-linejoin="round"/>`;
           }
@@ -1350,7 +1358,7 @@
           labels += `<text x="${x}" y="${(parseFloat(y) + parseFloat(r) + 9).toFixed(1)}" text-anchor="middle" font-size="7.5" style="fill:var(--ink-primary)" letter-spacing="0.03em">${escapeHtml(c.label)}</text>`;
         }
 
-        const cName = country === 'China' ? (lang === 'zh' ? '中国' : 'China') : (lang === 'zh' ? '英国' : 'UK');
+        const cName = (COUNTRY_NAMES[country] || {})[lang] || country;
         return `<div class="map-back-title"><span>${mapTitle} · ${escapeHtml(cName)}</span>${backBtn}</div>
           <svg class="map-back-svg" viewBox="0 0 ${MAP_W} ${MAP_H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             ${base}${pins}${labels}

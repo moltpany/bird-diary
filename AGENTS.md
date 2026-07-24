@@ -99,12 +99,17 @@ photographed, with the species' **approximate distribution shaded blue** and the
 
 ```jsonc
 {
-  "bbox":      { "China": {lonMin,lonMax,latMin,latMax}, "UK": {...} },
+  "bbox":      { "China": {lonMin,lonMax,latMin,latMax}, "UK": {...}, "Austria": {...} },
   "provinces": { "浙江": [[lon,lat], ...], ... },   // 34 simplified China province outlines
-  "uk":        [ [[lon,lat], ...], ... ],            // UK outline rings
-  "ranges":    { "白头鹎": ["上海","浙江", ...], ... } // species_zh → province short-names
+  "outlines":  { "UK": [ [[lon,lat], ...] ], "Austria": [ [...] ] }, // whole-country outline rings, keyed by country
+  "ranges":    { "白头鹎": ["上海","浙江", ...], ... } // species_zh → province short-names (China only)
 }
 ```
+
+China is special: it renders per-province and shades the provinces in the
+species' `ranges` entry blue. Every other country renders as a single filled
+outline (the whole country is shaded, since range data is only tracked at
+China-province granularity).
 
 **When publishing a new species**, add a `ranges` entry keyed by `species_zh`,
 listing the China **province short-names** where the bird occurs (breeding +
@@ -113,13 +118,15 @@ wintering). Province short-names are: `北京 天津 河北 山西 内蒙古 辽
 四川 贵州 云南 西藏 陕西 甘肃 青海 宁夏 新疆 台湾 香港 澳门`. Look up the
 species' real range (e.g. on a field guide / eBird) and list every province it
 covers — it's fine to be approximate; this is an at-a-glance range, not a precise
-map. Species seen only outside China (e.g. UK) need no `ranges` entry — the whole
-foreign country outline is shaded.
+map. Species seen only outside China (e.g. UK, Austria) need no `ranges` entry —
+the whole foreign country outline is shaded.
 
 **When photographing in a new city**, add the city to `CITY_COORDS_MAP` in
-`index.html` as `'城市': [lon, lat, 'China'|'UK']`. For a brand-new country, also
-add its `bbox` and an outline (under a new key alongside `uk`) to `geo.json` and
-extend the renderer.
+`index.html` as `'城市': [lon, lat, '<Country>']` (country must match a key in
+`geo.json` `bbox`/`outlines`). **For a brand-new country** the renderer is now
+generic — no code changes needed beyond data: add the country's `bbox`, add its
+outline rings under `outlines.<Country>`, add a `CITY_COORDS_MAP` entry, and add
+a display-name entry to `COUNTRY_NAMES` in `index.html`.
 
 Notes:
 - Ranges are intentionally approximate; province granularity is enough.
