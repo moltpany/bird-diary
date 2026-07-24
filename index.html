@@ -1352,7 +1352,7 @@
 
         const cName = country === 'China' ? (lang === 'zh' ? '中国' : 'China') : (lang === 'zh' ? '英国' : 'UK');
         return `<div class="map-back-title"><span>${mapTitle} · ${escapeHtml(cName)}</span>${backBtn}</div>
-          <svg class="map-back-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <svg class="map-back-svg" viewBox="0 0 ${MAP_W} ${MAP_H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             ${base}${pins}${labels}
           </svg>
           <div class="map-legend">
